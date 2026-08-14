@@ -10,3 +10,17 @@
   @apply text-blue-600;
 }
 
+a.active {
+  @apply text-blue-600 font-semibold;
+}
+
+.snack-error {
+  --mdc-snackbar-container-color: #dc2626;
+  --mdc-snackbar-supporting-text-color: white;
+}
+
+.snack-success {
+  --mdc-snackbar-container-color: #16a34a;
+  --mdc-snackbar-supporting-text-color: white;
+}
+

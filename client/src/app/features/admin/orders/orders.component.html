@@ -1,0 +1,39 @@
+<div class="max-w-6xl mx-auto py-8">
+  <div class="flex items-center justify-between mb-6">
+    <h1 class="text-2xl font-bold">Manage Orders</h1>
+    <a mat-stroked-button routerLink="/admin">Back to Dashboard</a>
+  </div>
+
+  @if (loading()) {
+    <p class="text-gray-500">Loading orders...</p>
+  } @else if (orders().length) {
+    <div class="overflow-x-auto">
+      <table class="w-full text-left border-collapse">
+        <thead>
+          <tr class="border-b">
+            <th class="p-3">ID</th>
+            <th class="p-3">Customer</th>
+            <th class="p-3">Date</th>
+            <th class="p-3">Status</th>
+            <th class="p-3">Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (order of orders(); track order.id) {
+            <tr class="border-b hover:bg-gray-50">
+              <td class="p-3">#{{ order.id }}</td>
+              <td class="p-3">{{ order.buyerEmail }}</td>
+              <td class="p-3">{{ order.orderDate | date: 'medium' }}</td>
+              <td class="p-3">{{ order.status }}</td>
+              <td class="p-3">{{ order.total | currency: 'INR' }}</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  } @else {
+    <div class="text-center py-16 text-gray-500">
+      <p>No orders found</p>
+    </div>
+  }
+</div>

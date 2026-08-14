@@ -2,7 +2,7 @@ import { Component, inject, OnInit } from '@angular/core';
 import { ShopService } from '../../core/services/shop.service';
 import { Product } from '../../shared/models/product';
 import { MatCard } from '@angular/material/card';
-import { ProductItemComponent } from "./product-item/product-item.component";
+import { ProductItemComponent } from './product-item/product-item.component';
 import { MatDialog } from '@angular/material/dialog';
 import { FiltersDialogComponent } from './filters-dialog/filters-dialog.component';
 import { MatButton, MatIconButton } from '@angular/material/button';
@@ -13,7 +13,7 @@ import { ShopParams } from '../../shared/models/shopparams';
 import { MatPaginator, PageEvent } from '@angular/material/paginator';
 import { Pagination } from '../../shared/models/pagination';
 import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute } from '@angular/router';
 
 @Component({
   selector: 'app-shop',
@@ -24,9 +24,10 @@ import { RouterLink } from '@angular/router';
   styleUrl: './shop.component.scss',
 })
 export class ShopComponent implements OnInit {
-private ShopService = inject(ShopService);
-private dialogService = inject(MatDialog);
-     products?: Pagination<Product>;
+  private shopService = inject(ShopService);
+  private dialogService = inject(MatDialog);
+  private route = inject(ActivatedRoute);
+  products?: Pagination<Product>;
 
     sortOptions=[
       {name:'Alphabetical',value:'name'},
@@ -36,16 +37,20 @@ private dialogService = inject(MatDialog);
     shopParams = new ShopParams();
      pageSizeOptions = [5,10,20,50];
    ngOnInit(): void {
+     const search = this.route.snapshot.queryParams['search'];
+     if (search) {
+       this.shopParams.search = search;
+     }
      this.initializeShop();
    }
    initializeShop() {
-     this.ShopService.getBrands();
-     this.ShopService.getTypes();
+     this.shopService.getBrands();
+     this.shopService.getTypes();
      this.getProducts();
    }
 
    getProducts() {
-    this.ShopService.getProducts(this.shopParams).subscribe({
+    this.shopService.getProducts(this.shopParams).subscribe({
        next: response => this.products = response,
        error: error => console.error(error)
      });

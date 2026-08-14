@@ -1,0 +1,107 @@
+<div class="max-w-3xl mx-auto py-8">
+  <h1 class="text-2xl font-bold mb-6">Checkout</h1>
+
+  @if (!cartService.cart()?.items?.length) {
+    <div class="text-center py-16 text-gray-500">
+      <p class="mb-4">Your cart is empty</p>
+      <a mat-flat-button color="primary" routerLink="/shop">Continue Shopping</a>
+    </div>
+  } @else {
+    <mat-stepper [linear]="true" [selectedIndex]="step()">
+      <mat-step [stepControl]="addressForm" label="Address">
+        <form [formGroup]="addressForm" class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
+          <mat-form-field appearance="outline">
+            <mat-label>First Name</mat-label>
+            <input matInput formControlName="firstName" />
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>Last Name</mat-label>
+            <input matInput formControlName="lastName" />
+          </mat-form-field>
+          <mat-form-field appearance="outline" class="sm:col-span-2">
+            <mat-label>Address Line 1</mat-label>
+            <input matInput formControlName="address1" />
+          </mat-form-field>
+          <mat-form-field appearance="outline" class="sm:col-span-2">
+            <mat-label>Address Line 2</mat-label>
+            <input matInput formControlName="address2" />
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>City</mat-label>
+            <input matInput formControlName="city" />
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>State</mat-label>
+            <input matInput formControlName="state" />
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>Zip Code</mat-label>
+            <input matInput formControlName="zipCode" />
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>Country</mat-label>
+            <input matInput formControlName="country" />
+          </mat-form-field>
+        </form>
+        <div class="mt-4">
+          <button mat-flat-button color="primary" matStepperNext [disabled]="addressForm.invalid">Next</button>
+        </div>
+      </mat-step>
+
+      <mat-step [stepControl]="deliveryForm" label="Delivery">
+        <form [formGroup]="deliveryForm" class="mt-4">
+          <mat-radio-group formControlName="deliveryMethodId" class="flex flex-col gap-3">
+            @for (method of deliveryMethods(); track method.id) {
+              <mat-radio-button [value]="method.id">
+                {{ method.shortName }} — {{ method.deliveryTime }} ({{ method.price | currency: 'INR' }})
+              </mat-radio-button>
+            }
+          </mat-radio-group>
+        </form>
+        <div class="mt-4 flex gap-2">
+          <button mat-stroked-button matStepperPrevious>Back</button>
+          <button mat-flat-button color="primary" matStepperNext [disabled]="deliveryForm.invalid">Next</button>
+        </div>
+      </mat-step>
+
+      <mat-step [stepControl]="paymentForm" label="Payment & Review">
+        <form [formGroup]="paymentForm" class="mt-4">
+          <mat-radio-group formControlName="paymentMethod" class="flex flex-col gap-3 mb-6">
+            <mat-radio-button value="card">Credit / Debit Card</mat-radio-button>
+            <mat-radio-button value="upi">UPI</mat-radio-button>
+            <mat-radio-button value="cod">Cash on Delivery</mat-radio-button>
+          </mat-radio-group>
+        </form>
+
+        <div class="bg-gray-50 p-4 rounded-lg mb-4">
+          <h3 class="font-semibold mb-2">Order Summary</h3>
+          @for (item of cartService.cart()!.items; track item.productId) {
+            <div class="flex justify-between text-sm py-1">
+              <span>{{ item.productName }} x {{ item.quantity }}</span>
+              <span>{{ item.price * item.quantity | currency: 'INR' }}</span>
+            </div>
+          }
+          <div class="border-t mt-2 pt-2 flex justify-between">
+            <span>Subtotal</span>
+            <span>{{ cartService.subtotal() | currency: 'INR' }}</span>
+          </div>
+          <div class="flex justify-between text-sm text-gray-600">
+            <span>Delivery</span>
+            <span>{{ selectedDelivery()?.price ?? 0 | currency: 'INR' }}</span>
+          </div>
+          <div class="flex justify-between font-bold mt-2">
+            <span>Total</span>
+            <span>{{ total() | currency: 'INR' }}</span>
+          </div>
+        </div>
+
+        <div class="flex gap-2">
+          <button mat-stroked-button matStepperPrevious>Back</button>
+          <button mat-flat-button color="primary" (click)="placeOrder()" [disabled]="paymentForm.invalid">
+            Place Order
+          </button>
+        </div>
+      </mat-step>
+    </mat-stepper>
+  }
+</div>
