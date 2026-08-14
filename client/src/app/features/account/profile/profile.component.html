@@ -1,0 +1,27 @@
+<div class="max-w-2xl mx-auto py-8">
+  <div class="flex items-center justify-between mb-6">
+    <h1 class="text-2xl font-bold">My Account</h1>
+    <div class="flex gap-2">
+      <a mat-stroked-button routerLink="/account/orders">Orders</a>
+      <a mat-stroked-button routerLink="/account/addresses">Addresses</a>
+    </div>
+  </div>
+
+  <form [formGroup]="profileForm" (ngSubmit)="onSubmit()" class="flex flex-col gap-4">
+    <div class="grid grid-cols-2 gap-4">
+      <mat-form-field appearance="outline">
+        <mat-label>First Name</mat-label>
+        <input matInput formControlName="firstName" />
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Last Name</mat-label>
+        <input matInput formControlName="lastName" />
+      </mat-form-field>
+    </div>
+    <mat-form-field appearance="outline">
+      <mat-label>Email</mat-label>
+      <input matInput formControlName="email" />
+    </mat-form-field>
+    <button mat-flat-button color="primary" type="submit">Save Changes</button>
+  </form>
+</div>

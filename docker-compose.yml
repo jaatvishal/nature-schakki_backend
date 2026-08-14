@@ -1,10 +1,71 @@
 services:
   sql:
     image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: natureschakki-sql
     environment:
       ACCEPT_EULA: "Y"
-      MSSQL_SA_PASSWORD: Admin@123
-    plateform: linux/amd64  
+      MSSQL_SA_PASSWORD: "Admin@123"
+    platform: linux/amd64
     ports:
       - "1433:1433"
-    
+    volumes:
+      - sql_data:/var/opt/mssql
+    healthcheck:
+      test: /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "Admin@123" -C -Q "SELECT 1" || exit 1
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  redis:
+    image: redis:7-alpine
+    container_name: natureschakki-redis
+    platform: linux/amd64
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: natureschakki-api
+    ports:
+      - "8080:8080"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__DefaultConnection: "Server=sql,1433;Database=NaturesChakki;User Id=sa;Password=Admin@123;TrustServerCertificate=True"
+      ConnectionStrings__Redis: "redis:6379"
+      CacheProvider: "Redis"
+      JwtSettings__Key: "super_secret_development_key_at_least_32_chars"
+      JwtSettings__Issuer: "http://localhost:8080"
+      JwtSettings__Audience: "http://localhost:8080"
+      JwtSettings__DurationInMinutes: "60"
+      StripeSettings__SecretKey: "sk_test_placeholder"
+      StripeSettings__PublishableKey: "pk_test_placeholder"
+      StripeSettings__WebhookSecret: "whsec_placeholder"
+      SeedUsers__AdminEmail: "admin@natureschakki.com"
+      SeedUsers__AdminPassword: "Admin@123!"
+      SeedUsers__CustomerEmail: "customer@natureschakki.com"
+      SeedUsers__CustomerPassword: "Customer@123!"
+    depends_on:
+      sql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+
+volumes:
+  sql_data:
+  redis_data:
