@@ -9,10 +9,13 @@
       <mat-label>Password</mat-label>
       <input matInput type="password" formControlName="password" />
     </mat-form-field>
+    <div class="text-right -mt-2">
+      <a routerLink="/auth/forgot-password" class="text-sm text-amber-700 hover:underline">Forgot password?</a>
+    </div>
     <button mat-flat-button color="primary" type="submit" [disabled]="loginForm.invalid">Login</button>
   </form>
   <p class="mt-4 text-sm text-gray-600">
     Don't have an account?
-    <a routerLink="/auth/register" class="text-blue-600 hover:underline">Register</a>
+    <a routerLink="/auth/register" class="text-amber-700 hover:underline">Register</a>
   </p>
 </div>

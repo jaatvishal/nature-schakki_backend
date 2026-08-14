@@ -12,25 +12,26 @@ export type Order = {
   id: number;
   buyerEmail: string;
   orderDate: string;
-  shippingAddress: Address;
-  deliveryMethod: string;
+  shipToAddress: Address;
+  deliveryMethod?: { shortName: string };
   subtotal: number;
-  deliveryFee: number;
+  deliveryCost: number;
   total: number;
   status: string;
   orderItems: OrderItem[];
+  paymentStatus?: string;
 };
 
 export type CreateOrderRequest = {
-  basketId: string;
   deliveryMethodId: number;
   shippingAddress: Address;
-  paymentMethod: string;
 };
 
 export type DeliveryMethod = {
   id: number;
   shortName: string;
-  deliveryTime: string;
+  description?: string;
+  deliveryTime?: string;
+  deliveryTimeDays?: number;
   price: number;
 };

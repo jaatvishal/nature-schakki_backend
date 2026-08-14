@@ -81,24 +81,19 @@ export class CheckoutComponent implements OnInit {
 
   placeOrder() {
     if (this.addressForm.invalid || this.deliveryForm.invalid) return;
-
-    const request = {
-      basketId: this.cartService.getBuyerId(),
+    const addr = this.addressForm.getRawValue();
+    this.orderService.createOrder({
       deliveryMethodId: this.deliveryForm.value.deliveryMethodId!,
-      shippingAddress: this.addressForm.getRawValue() as {
-        firstName: string;
-        lastName: string;
-        address1: string;
-        address2?: string;
-        city: string;
-        state: string;
-        zipCode: string;
-        country: string;
+      shippingAddress: {
+        firstName: addr.firstName!,
+        lastName: addr.lastName!,
+        street: addr.address1!,
+        city: addr.city!,
+        state: addr.state!,
+        zipCode: addr.zipCode!,
+        country: addr.country!,
       },
-      paymentMethod: this.paymentForm.value.paymentMethod!,
-    };
-
-    this.orderService.createOrder(request).subscribe({
+    }).subscribe({
       next: order => {
         this.snackbar.success('Order placed successfully');
         this.cartService.deleteCart().subscribe();

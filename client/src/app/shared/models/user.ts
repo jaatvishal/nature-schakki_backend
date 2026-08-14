@@ -24,4 +24,5 @@ export type AuthResponse = {
   lastName: string;
   roles: string[];
   token: string;
+  refreshToken?: string;
 };

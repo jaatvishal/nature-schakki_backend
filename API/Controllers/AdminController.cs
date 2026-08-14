@@ -11,6 +11,11 @@ using Microsoft.EntityFrameworkCore;
 
 namespace API.Controllers;
 
+public class UpdateOrderStatusDto
+{
+    public OrderStatus Status { get; set; }
+}
+
 [ApiVersion("1.0")]
 [Authorize(Roles = "Admin")]
 [Route("api/v{version:apiVersion}/admin")]
@@ -54,12 +59,53 @@ public class AdminController(
 
     [HttpGet("orders")]
     public async Task<IActionResult> GetOrders() =>
-        Ok(await context.Orders.AsNoTracking().Include(x => x.OrderItems).ToListAsync());
+        Ok(await context.Orders.AsNoTracking()
+            .Include(x => x.OrderItems)
+            .Include(x => x.DeliveryMethod)
+            .Select(o => new
+            {
+                o.Id,
+                o.BuyerEmail,
+                o.OrderDate,
+                Status = o.Status.ToString(),
+                o.Subtotal,
+                o.DeliveryCost,
+                o.Total,
+                o.PaymentIntentId,
+                PaymentStatus = context.Payments
+                    .Where(p => p.OrderId == o.Id)
+                    .OrderByDescending(p => p.CreatedAt)
+                    .Select(p => p.Status.ToString())
+                    .FirstOrDefault() ?? "Pending",
+                OrderItems = o.OrderItems.Select(i => new
+                {
+                    i.ProductId,
+                    i.ProductName,
+                    i.PictureUrl,
+                    i.Price,
+                    i.Quantity
+                })
+            }).ToListAsync());
+
+    [HttpGet("payments")]
+    public async Task<IActionResult> GetPayments() =>
+        Ok(await context.Payments.AsNoTracking()
+            .Include(p => p.Order)
+            .Select(p => new
+            {
+                p.Id,
+                p.OrderId,
+                BuyerEmail = p.Order!.BuyerEmail,
+                p.Amount,
+                Status = p.Status.ToString(),
+                p.PaymentIntentId,
+                p.CreatedAt
+            }).ToListAsync());
 
     [HttpPut("orders/{id:int}/status")]
-    public async Task<IActionResult> UpdateOrderStatus(int id, [FromBody] OrderStatus status)
+    public async Task<IActionResult> UpdateOrderStatus(int id, [FromBody] UpdateOrderStatusDto dto)
     {
-        var order = await orderService.UpdateOrderStatusAsync(id, status);
+        var order = await orderService.UpdateOrderStatusAsync(id, dto.Status);
         return Ok(order);
     }
 

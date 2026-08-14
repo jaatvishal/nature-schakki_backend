@@ -37,7 +37,7 @@ export class RegisterComponent {
     }).subscribe({
       next: () => {
         this.snackbar.success('Account created successfully');
-        this.router.navigateByUrl('/');
+        this.router.navigateByUrl(this.authService.getPostLoginRoute());
       },
       error: (err: string[] | unknown) => {
         if (Array.isArray(err)) {

@@ -1,35 +1,35 @@
 @if (product) {
-  <section class="py-8">
-    <div class="max-w-screen-2xl px-4 mx-auto">
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-        <div class="max-w-xl mx-auto">
-          <img [src]="product.pictureUrl" alt="product image" class="w-full rounded-lg" />
+  <section class="py-6">
+    <div class="max-w-screen-xl mx-auto px-4">
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-10">
+        <div class="bg-gray-50 rounded-2xl p-6 flex items-center justify-center">
+          <img [src]="product.pictureUrl" [alt]="product.name" class="max-h-96 object-contain rounded-lg" />
         </div>
-        <div>
-          <h1 class="text-2xl font-semibold text-gray-900">{{ product.name }}</h1>
-          <div class="mt-4 items-center gap-4 flex">
-            <p class="text-3xl font-extrabold text-gray-900">
-              {{ product.price | currency: 'INR' }}
-            </p>
+        <div class="flex flex-col">
+          <span class="text-amber-700 text-sm font-semibold uppercase tracking-wide">{{ product.brand }}</span>
+          <h1 class="text-3xl font-bold text-gray-900 mt-1">{{ product.name }}</h1>
+          <div class="flex gap-2 mt-3">
+            <mat-chip>{{ product.type }}</mat-chip>
+            @if (product.quantityInStock > 0) {
+              <mat-chip class="!bg-green-100">In Stock ({{ product.quantityInStock }})</mat-chip>
+            } @else {
+              <mat-chip class="!bg-red-100">Out of Stock</mat-chip>
+            }
           </div>
-          <div class="flex flex-wrap gap-4 mt-3 items-end">
-            <button mat-stroked-button class="match-input-height" (click)="addToCart()">
-              <mat-icon>shopping_cart</mat-icon>
-              Add to cart
-            </button>
-            <button mat-stroked-button (click)="toggleWishlist()">
-              <mat-icon>{{ isInWishlist() ? 'favorite' : 'favorite_border' }}</mat-icon>
-              Wishlist
-            </button>
-            <mat-form-field appearance="outline" class="w-24">
-              <mat-label>Quantity</mat-label>
-              <input matInput type="number" min="1" [(ngModel)]="quantity" />
+          <p class="text-4xl font-extrabold text-gray-900 mt-6">{{ product.price | currency: 'INR' }}</p>
+          <p class="text-gray-600 mt-4 leading-relaxed">{{ product.description }}</p>
+
+          <div class="flex flex-wrap items-end gap-4 mt-8">
+            <mat-form-field appearance="outline" class="w-28">
+              <mat-label>Qty</mat-label>
+              <input matInput type="number" min="1" [max]="product.quantityInStock" [(ngModel)]="quantity" />
             </mat-form-field>
+            <button mat-flat-button color="primary" class="!h-14 !px-8" (click)="addToCart()"
+              [disabled]="product.quantityInStock < 1">
+              <mat-icon>shopping_cart</mat-icon>
+              Add to Cart
+            </button>
           </div>
-
-          <mat-divider></mat-divider>
-
-          <p class="mt-6 text-gray-500">{{ product.description }}</p>
         </div>
       </div>
     </div>

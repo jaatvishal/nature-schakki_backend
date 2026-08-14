@@ -1,20 +1,20 @@
-<div class="max-w-4xl mx-auto py-8">
+<div class="max-w-4xl mx-auto py-8 px-4">
   <h1 class="text-2xl font-bold mb-6">Admin Dashboard</h1>
-
-  <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-8">
-    <mat-card>
-      <mat-card-content class="p-6 text-center">
-        <p class="text-4xl font-bold text-blue-600">{{ productCount() }}</p>
-        <p class="text-gray-500 mt-2">Products</p>
-        <a mat-stroked-button routerLink="/admin/products" class="mt-4">Manage Products</a>
-      </mat-card-content>
-    </mat-card>
-    <mat-card>
-      <mat-card-content class="p-6 text-center">
-        <p class="text-4xl font-bold text-green-600">{{ orderCount() }}</p>
-        <p class="text-gray-500 mt-2">Orders</p>
-        <a mat-stroked-button routerLink="/admin/orders" class="mt-4">Manage Orders</a>
-      </mat-card-content>
-    </mat-card>
+  <div class="grid grid-cols-1 sm:grid-cols-3 gap-6">
+    <mat-card><mat-card-content class="p-6 text-center">
+      <p class="text-4xl font-bold text-blue-600">{{ productCount() }}</p>
+      <p class="text-gray-500 mt-2">Products</p>
+      <a mat-stroked-button routerLink="/admin/products" class="mt-4">Manage</a>
+    </mat-card-content></mat-card>
+    <mat-card><mat-card-content class="p-6 text-center">
+      <p class="text-4xl font-bold text-green-600">{{ orderCount() }}</p>
+      <p class="text-gray-500 mt-2">Orders</p>
+      <a mat-stroked-button routerLink="/admin/orders" class="mt-4">Manage</a>
+    </mat-card-content></mat-card>
+    <mat-card><mat-card-content class="p-6 text-center">
+      <p class="text-4xl font-bold text-purple-600">$</p>
+      <p class="text-gray-500 mt-2">Payments</p>
+      <a mat-stroked-button routerLink="/admin/payments" class="mt-4">View</a>
+    </mat-card-content></mat-card>
   </div>
 </div>

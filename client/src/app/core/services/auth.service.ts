@@ -6,16 +6,14 @@ import { environment } from '../../../environments/environment';
 import { AuthResponse, LoginRequest, RegisterRequest, User } from '../../shared/models/user';
 
 const TOKEN_KEY = 'token';
+const REFRESH_KEY = 'refreshToken';
 const USER_KEY = 'user';
 
-@Injectable({
-  providedIn: 'root',
-})
+@Injectable({ providedIn: 'root' })
 export class AuthService {
   private http = inject(HttpClient);
   private router = inject(Router);
   private baseUrl = environment.apiUrl + '/v1/account';
-
   private userSignal = signal<User | null>(this.loadUserFromStorage());
 
   currentUser = computed(() => this.userSignal());
@@ -23,37 +21,47 @@ export class AuthService {
   isAdmin = computed(() => this.userSignal()?.roles.includes('Admin') ?? false);
 
   register(request: RegisterRequest) {
-    return this.http.post<AuthResponse>(`${this.baseUrl}/register`, request).pipe(
-      tap(response => this.setUser(response))
-    );
+    return this.http.post<AuthResponse>(`${this.baseUrl}/register`, {
+      email: request.email,
+      password: request.password,
+      firstName: request.firstName,
+      lastName: request.lastName,
+    }).pipe(tap(r => this.setUser(r)));
   }
 
   login(request: LoginRequest) {
-    return this.http.post<AuthResponse>(`${this.baseUrl}/login`, request).pipe(
-      tap(response => this.setUser(response))
-    );
+    return this.http.post<AuthResponse>(`${this.baseUrl}/login`, request).pipe(tap(r => this.setUser(r)));
   }
 
   logout() {
+    if (this.getToken()) {
+      this.http.post(`${this.baseUrl}/logout`, {}).subscribe({ error: () => {} });
+    }
     localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(REFRESH_KEY);
     localStorage.removeItem(USER_KEY);
     this.userSignal.set(null);
-    this.router.navigateByUrl('/');
+    this.router.navigateByUrl('/auth/login');
+  }
+
+  forgotPassword(email: string) {
+    return this.http.post<{ message: string }>(`${this.baseUrl}/forgot-password`, { email });
+  }
+
+  resetPassword(email: string, token: string, newPassword: string) {
+    return this.http.post<{ message: string }>(`${this.baseUrl}/reset-password`, { email, token, newPassword });
   }
 
   refreshToken() {
-    return this.http.post<AuthResponse>(`${this.baseUrl}/refresh-token`, {}).pipe(
-      tap(response => this.setUser(response))
+    const refreshToken = localStorage.getItem(REFRESH_KEY);
+    return this.http.post<AuthResponse>(`${this.baseUrl}/refresh-token`, { refreshToken }).pipe(
+      tap(r => this.setUser(r))
     );
   }
 
   getCurrentUser() {
-    return this.http.get<User>(`${this.baseUrl}/current-user`).pipe(
-      tap(user => {
-        const token = this.getToken();
-        this.userSignal.set({ ...user, token: token ?? undefined });
-        localStorage.setItem(USER_KEY, JSON.stringify(this.userSignal()));
-      })
+    return this.http.get<AuthResponse>(`${this.baseUrl}/current-user`).pipe(
+      tap(r => this.setUser({ ...r, token: this.getToken() ?? r.token }))
     );
   }
 
@@ -61,24 +69,28 @@ export class AuthService {
     return localStorage.getItem(TOKEN_KEY);
   }
 
+  getPostLoginRoute(): string {
+    return this.isAdmin() ? '/admin' : '/shop';
+  }
+
   private setUser(response: AuthResponse) {
     const user: User = {
       email: response.email,
       firstName: response.firstName,
       lastName: response.lastName,
-      roles: response.roles,
+      roles: response.roles ?? [],
       token: response.token,
     };
     localStorage.setItem(TOKEN_KEY, response.token);
+    if (response.refreshToken) localStorage.setItem(REFRESH_KEY, response.refreshToken);
     localStorage.setItem(USER_KEY, JSON.stringify(user));
     this.userSignal.set(user);
   }
 
   private loadUserFromStorage(): User | null {
-    const stored = localStorage.getItem(USER_KEY);
-    if (!stored) return null;
     try {
-      return JSON.parse(stored) as User;
+      const stored = localStorage.getItem(USER_KEY);
+      return stored ? (JSON.parse(stored) as User) : null;
     } catch {
       return null;
     }

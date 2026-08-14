@@ -53,7 +53,7 @@
           <mat-radio-group formControlName="deliveryMethodId" class="flex flex-col gap-3">
             @for (method of deliveryMethods(); track method.id) {
               <mat-radio-button [value]="method.id">
-                {{ method.shortName }} — {{ method.deliveryTime }} ({{ method.price | currency: 'INR' }})
+                {{ method.shortName }} — {{ method.deliveryTimeDays }} days ({{ method.price | currency: 'INR' }})
               </mat-radio-button>
             }
           </mat-radio-group>

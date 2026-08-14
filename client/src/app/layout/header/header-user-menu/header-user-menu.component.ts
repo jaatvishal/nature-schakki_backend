@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
-import { Router, RouterLink } from '@angular/router';
+import { RouterLink } from '@angular/router';
 import { MatButton } from '@angular/material/button';
 import { MatIcon } from '@angular/material/icon';
 import { MatMenu, MatMenuItem, MatMenuTrigger } from '@angular/material/menu';
@@ -17,12 +17,11 @@ import { AuthService } from '../../../core/services/auth.service';
       </button>
       <mat-menu #userMenu="matMenu">
         <a mat-menu-item routerLink="/account">Profile</a>
-        <a mat-menu-item routerLink="/account/orders">Orders</a>
-        <a mat-menu-item routerLink="/account/addresses">Addresses</a>
+        <a mat-menu-item routerLink="/account/orders">My Orders</a>
         @if (authService.isAdmin()) {
           <a mat-menu-item routerLink="/admin">Admin</a>
         }
-        <button mat-menu-item (click)="logout()">Logout</button>
+        <button mat-menu-item (click)="authService.logout()">Logout</button>
       </mat-menu>
     } @else {
       <a mat-stroked-button routerLink="/auth/login">Login</a>
@@ -32,10 +31,4 @@ import { AuthService } from '../../../core/services/auth.service';
 })
 export class HeaderUserMenuComponent {
   authService = inject(AuthService);
-  private router = inject(Router);
-
-  logout() {
-    this.authService.logout();
-    this.router.navigateByUrl('/');
-  }
 }

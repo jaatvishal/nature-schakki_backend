@@ -7,8 +7,10 @@ using Infrastructure.Identity;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
+using System.Text;
 
 namespace API.Controllers;
 
@@ -19,7 +21,9 @@ public class AccountController(
     UserManager<AppUser> userManager,
     SignInManager<AppUser> signInManager,
     ITokenService tokenService,
-    AppIdentityDbContext identityContext) : ControllerBase
+    IEmailService emailService,
+    AppIdentityDbContext identityContext,
+    IConfiguration config) : ControllerBase
 {
     [HttpPost("register")]
     public async Task<ActionResult<UserDto>> Register(RegisterDto dto)
@@ -27,20 +31,23 @@ public class AccountController(
         if (await userManager.FindByEmailAsync(dto.Email) != null)
             return BadRequest("Email is already registered.");
 
+        var displayName = !string.IsNullOrWhiteSpace(dto.DisplayName)
+            ? dto.DisplayName
+            : $"{dto.FirstName} {dto.LastName}".Trim();
+
         var user = new AppUser
         {
             UserName = dto.Email,
             Email = dto.Email,
-            DisplayName = dto.DisplayName,
+            DisplayName = displayName,
             EmailConfirmed = true
         };
 
         var result = await userManager.CreateAsync(user, dto.Password);
         if (!result.Succeeded)
-            return BadRequest(result.Errors);
+            return BadRequest(result.Errors.Select(e => e.Description));
 
         await userManager.AddToRoleAsync(user, "Customer");
-
         return await CreateUserDto(user);
     }
 
@@ -58,17 +65,24 @@ public class AccountController(
 
     [Authorize]
     [HttpGet("current")]
+    [HttpGet("current-user")]
     public async Task<ActionResult<UserDto>> GetCurrentUser()
     {
-        var user = await userManager.FindByEmailAsync(User.FindFirstValue(ClaimTypes.Email)!);
+        var email = User.FindFirstValue(ClaimTypes.Email);
+        if (email == null) return Unauthorized();
+        var user = await userManager.FindByEmailAsync(email);
         if (user == null) return Unauthorized();
-        return await CreateUserDto(user);
+        return await CreateUserDto(user, includeNewTokens: false);
     }
 
     [HttpPost("refresh")]
-    public async Task<ActionResult<UserDto>> RefreshToken(RefreshTokenDto dto)
+    [HttpPost("refresh-token")]
+    public async Task<ActionResult<UserDto>> RefreshToken([FromBody] RefreshTokenDto? dto)
     {
-        var refreshToken = await tokenService.ValidateRefreshTokenAsync(dto.RefreshToken);
+        var token = dto?.RefreshToken ?? Request.Headers["X-Refresh-Token"].FirstOrDefault();
+        if (string.IsNullOrEmpty(token)) return Unauthorized("Invalid refresh token.");
+
+        var refreshToken = await tokenService.ValidateRefreshTokenAsync(token);
         if (refreshToken == null) return Unauthorized("Invalid refresh token.");
 
         var user = await userManager.FindByIdAsync(refreshToken.UserId.ToString());
@@ -100,20 +114,62 @@ public class AccountController(
         return Ok();
     }
 
-    private async Task<UserDto> CreateUserDto(AppUser user)
+    [HttpPost("forgot-password")]
+    public async Task<IActionResult> ForgotPassword(ForgotPasswordDto dto)
+    {
+        var user = await userManager.FindByEmailAsync(dto.Email);
+        if (user == null) return Ok(new { message = "If the email exists, a reset link was sent." });
+
+        var token = await userManager.GeneratePasswordResetTokenAsync(user);
+        var encoded = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(token));
+        var resetUrl = $"{config["ClientUrl"] ?? "http://localhost:4200"}/auth/reset-password?email={Uri.EscapeDataString(dto.Email)}&token={encoded}";
+
+        await emailService.SendEmailAsync(user.Email!,
+            "Reset your password",
+            $"Reset your password: {resetUrl}");
+
+        return Ok(new { message = "If the email exists, a reset link was sent." });
+    }
+
+    [HttpPost("reset-password")]
+    public async Task<IActionResult> ResetPassword(ResetPasswordDto dto)
+    {
+        var user = await userManager.FindByEmailAsync(dto.Email);
+        if (user == null) return BadRequest("Invalid request.");
+
+        var token = Encoding.UTF8.GetString(WebEncoders.Base64UrlDecode(dto.Token));
+        var result = await userManager.ResetPasswordAsync(user, token, dto.NewPassword);
+        if (!result.Succeeded) return BadRequest(result.Errors.Select(e => e.Description));
+
+        return Ok(new { message = "Password reset successful." });
+    }
+
+    private async Task<UserDto> CreateUserDto(AppUser user, bool includeNewTokens = true)
     {
         var roles = await userManager.GetRolesAsync(user);
-        var token = tokenService.CreateToken(user.Id, user.Email!, user.DisplayName, roles);
-        var refreshToken = tokenService.GenerateRefreshToken();
+        var parts = user.DisplayName.Split(' ', 2);
+        var dto = new UserDto
+        {
+            Email = user.Email!,
+            DisplayName = user.DisplayName,
+            FirstName = parts.Length > 0 ? parts[0] : user.DisplayName,
+            LastName = parts.Length > 1 ? parts[1] : string.Empty,
+            Roles = roles.ToList()
+        };
+
+        if (!includeNewTokens) return dto;
+
+        dto.Token = tokenService.CreateToken(user.Id, user.Email!, user.DisplayName, roles);
+        dto.RefreshToken = tokenService.GenerateRefreshToken();
 
         identityContext.RefreshTokens.Add(new RefreshToken
         {
             UserId = user.Id,
-            Token = refreshToken,
+            Token = dto.RefreshToken,
             ExpiresAt = DateTime.UtcNow.AddDays(7)
         });
         await identityContext.SaveChangesAsync();
 
-        return new UserDto(user.Email!, user.DisplayName, token, refreshToken);
+        return dto;
     }
 }

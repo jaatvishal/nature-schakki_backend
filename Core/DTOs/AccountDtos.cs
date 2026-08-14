@@ -10,23 +10,32 @@ public class RegisterDto
 {
     public string Email { get; set; } = string.Empty;
     public string DisplayName { get; set; } = string.Empty;
+    public string FirstName { get; set; } = string.Empty;
+    public string LastName { get; set; } = string.Empty;
     public string Password { get; set; } = string.Empty;
 }
 
 public class UserDto
 {
-    public UserDto(string email, string displayName, string token, string refreshToken)
-    {
-        Email = email;
-        DisplayName = displayName;
-        Token = token;
-        RefreshToken = refreshToken;
-    }
+    public string Email { get; set; } = string.Empty;
+    public string DisplayName { get; set; } = string.Empty;
+    public string FirstName { get; set; } = string.Empty;
+    public string LastName { get; set; } = string.Empty;
+    public string Token { get; set; } = string.Empty;
+    public string RefreshToken { get; set; } = string.Empty;
+    public IList<string> Roles { get; set; } = [];
+}
 
-    public string Email { get; set; }
-    public string DisplayName { get; set; }
-    public string Token { get; set; }
-    public string RefreshToken { get; set; }
+public class ForgotPasswordDto
+{
+    public string Email { get; set; } = string.Empty;
+}
+
+public class ResetPasswordDto
+{
+    public string Email { get; set; } = string.Empty;
+    public string Token { get; set; } = string.Empty;
+    public string NewPassword { get; set; } = string.Empty;
 }
 
 public class AddressDto
