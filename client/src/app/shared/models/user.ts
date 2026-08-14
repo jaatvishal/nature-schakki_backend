@@ -20,8 +20,9 @@ export type RegisterRequest = {
 
 export type AuthResponse = {
   email: string;
-  firstName: string;
-  lastName: string;
+  firstName?: string;
+  lastName?: string;
+  displayName?: string;
   roles: string[];
   token: string;
   refreshToken?: string;

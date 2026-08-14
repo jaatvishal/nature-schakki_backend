@@ -25,8 +25,9 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
         }
       }
 
-      if (error.status === 401 && !req.url.includes('/account/')) {
-        snackbar.error('Session expired. Please log in again.');
+      if (error.status === 401 && !req.url.includes('/account/') && !req.url.includes('/wishlist')) {
+        const token = localStorage.getItem('token');
+        if (token) snackbar.error('Session expired. Please log in again.');
       }
 
       if (error.status === 403) {

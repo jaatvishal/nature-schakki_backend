@@ -30,6 +30,10 @@ export class ProductDetailsComponent implements OnInit {
   product?: Product;
   quantity = 1;
 
+  get totalPrice(): number {
+    return (this.product?.price ?? 0) * this.quantity;
+  }
+
   ngOnInit(): void {
     const id = this.activatedRoute.snapshot.paramMap.get('id');
     if (!id) return;

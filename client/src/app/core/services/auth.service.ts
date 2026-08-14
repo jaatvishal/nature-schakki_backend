@@ -17,8 +17,8 @@ export class AuthService {
   private userSignal = signal<User | null>(this.loadUserFromStorage());
 
   currentUser = computed(() => this.userSignal());
-  isLoggedIn = computed(() => !!this.userSignal());
-  isAdmin = computed(() => this.userSignal()?.roles.includes('Admin') ?? false);
+  isLoggedIn = computed(() => !!this.getToken() && !!this.userSignal());
+  isAdmin = computed(() => this.userSignal()?.roles?.includes('Admin') ?? false);
 
   register(request: RegisterRequest) {
     return this.http.post<AuthResponse>(`${this.baseUrl}/register`, {
@@ -59,12 +59,6 @@ export class AuthService {
     );
   }
 
-  getCurrentUser() {
-    return this.http.get<AuthResponse>(`${this.baseUrl}/current-user`).pipe(
-      tap(r => this.setUser({ ...r, token: this.getToken() ?? r.token }))
-    );
-  }
-
   getToken(): string | null {
     return localStorage.getItem(TOKEN_KEY);
   }
@@ -74,13 +68,15 @@ export class AuthService {
   }
 
   private setUser(response: AuthResponse) {
+    const parts = (response.displayName || '').split(' ', 2);
     const user: User = {
       email: response.email,
-      firstName: response.firstName,
-      lastName: response.lastName,
+      firstName: response.firstName || parts[0] || response.email,
+      lastName: response.lastName || (parts[1] ?? ''),
       roles: response.roles ?? [],
       token: response.token,
     };
+    if (!response.token) return;
     localStorage.setItem(TOKEN_KEY, response.token);
     if (response.refreshToken) localStorage.setItem(REFRESH_KEY, response.refreshToken);
     localStorage.setItem(USER_KEY, JSON.stringify(user));
@@ -90,7 +86,7 @@ export class AuthService {
   private loadUserFromStorage(): User | null {
     try {
       const stored = localStorage.getItem(USER_KEY);
-      return stored ? (JSON.parse(stored) as User) : null;
+      return stored && this.getToken() ? (JSON.parse(stored) as User) : null;
     } catch {
       return null;
     }

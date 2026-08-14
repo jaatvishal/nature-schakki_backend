@@ -11,8 +11,6 @@ public static class IdentitySeed
 {
     public static async Task SeedUsersAsync(IServiceProvider services, IHostEnvironment env)
     {
-        if (!env.IsDevelopment()) return;
-
         var userManager = services.GetRequiredService<UserManager<AppUser>>();
         var roleManager = services.GetRequiredService<RoleManager<AppRole>>();
         var config = services.GetRequiredService<IConfiguration>();
@@ -36,7 +34,18 @@ public static class IdentitySeed
     private static async Task CreateUserAsync(
         UserManager<AppUser> userManager, string email, string displayName, string password, string role)
     {
-        if (await userManager.FindByEmailAsync(email) != null) return;
+        var existing = await userManager.FindByEmailAsync(email);
+        if (existing != null)
+        {
+            if (!await userManager.CheckPasswordAsync(existing, password))
+            {
+                var token = await userManager.GeneratePasswordResetTokenAsync(existing);
+                await userManager.ResetPasswordAsync(existing, token, password);
+            }
+            if (!await userManager.IsInRoleAsync(existing, role))
+                await userManager.AddToRoleAsync(existing, role);
+            return;
+        }
 
         var user = new AppUser
         {

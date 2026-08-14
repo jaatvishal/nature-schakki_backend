@@ -2,7 +2,7 @@ import { Component, inject, OnInit, signal } from '@angular/core';
 import { MatProgressBar } from '@angular/material/progress-bar';
 import { BusyService } from '../../core/services/busy.service';
 import { CartService } from '../../core/services/cart.service';
-import { WishlistService } from '../../core/services/wishlist.service';
+import { AuthService } from '../../core/services/auth.service';
 import { CartDrawerComponent } from '../../features/cart/cart-drawer/cart-drawer.component';
 import { getEnabledHeaderItems, HeaderItemId } from './header.config';
 import { HeaderCartSummaryComponent } from './header-cart-summary/header-cart-summary.component';
@@ -28,14 +28,13 @@ import { HeaderUserMenuComponent } from './header-user-menu/header-user-menu.com
 export class HeaderComponent implements OnInit {
   busyService = inject(BusyService);
   private cartService = inject(CartService);
-  private wishlistService = inject(WishlistService);
+  private authService = inject(AuthService);
 
   headerItems = getEnabledHeaderItems();
   cartDrawerOpen = signal(false);
 
   ngOnInit(): void {
-    this.cartService.initCart();
-    this.wishlistService.initWishlist();
+    if (this.authService.isLoggedIn()) this.cartService.initCart();
   }
 
   isEnabled(id: HeaderItemId): boolean {

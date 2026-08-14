@@ -26,6 +26,7 @@ public class AccountController(
     IConfiguration config) : ControllerBase
 {
     [HttpPost("register")]
+    [AllowAnonymous]
     public async Task<ActionResult<UserDto>> Register(RegisterDto dto)
     {
         if (await userManager.FindByEmailAsync(dto.Email) != null)
@@ -52,6 +53,7 @@ public class AccountController(
     }
 
     [HttpPost("login")]
+    [AllowAnonymous]
     public async Task<ActionResult<UserDto>> Login(LoginDto dto)
     {
         var user = await userManager.FindByEmailAsync(dto.Email);
