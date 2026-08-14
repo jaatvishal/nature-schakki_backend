@@ -1,0 +1,164 @@
+[
+  {
+    "Name": "Amaranth Atta",
+    "Description": "Premium quality Amaranth Atta made from carefully selected grains. Rich in protein, fiber, and essential nutrients. Ideal for healthy rotis, baking, and gluten-free recipes.",
+    "Price": 120,
+    "PictureUrl": "/images/products/sb-ang1.png",
+    "Type": "Flour",
+    "Brand": "NaturesChakki",
+    "QuantityInStock": 82
+  },
+  {
+    "Name": "Oats Flour",
+    "Description": "Finely ground oats flour packed with dietary fiber and natural goodness. Supports heart health and healthy digestion. Perfect for baking and healthy meal preparation.",
+    "Price": 90,
+    "PictureUrl": "/images/products/sb-ang2.png",
+    "Type": "Flour",
+    "Brand": "NaturesChakki",
+    "QuantityInStock": 75
+  },
+  {
+    "Name": "Proso Millet",
+    "Description": "Farm-fresh Proso Millet rich in minerals and protein. Easy to digest and suitable for everyday healthy meals. A nutritious alternative to regular grains.",
+    "Price": 80,
+    "PictureUrl": "/images/products/sb-core1.png",
+    "Type": "Millet",
+    "Brand": "NaturesChakki",
+    "QuantityInStock": 3
+  },
+  {
+    "Name": "Browntop Millet",
+    "Description": "Premium Browntop Millet sourced naturally for balanced nutrition. High in fiber and supports healthy digestion. Perfect for traditional and modern recipes.",
+    "Price": 95,
+    "PictureUrl": "/images/products/sb-core2.png",
+    "Type": "Millet",
+    "Brand": "NaturesChakki",
+    "QuantityInStock": 52
+  },
+  {
+    "Name": "Foxtail Millet",
+    "Description": "Healthy Foxtail Millet loaded with nutrients and natural energy. Supports weight management and healthy living. Excellent substitute for rice-based meals.",
+    "Price": 85,
+    "PictureUrl": "/images/products/sb-react1.png",
+    "Type": "Millet",
+    "Brand": "NaturesChakki",
+    "QuantityInStock": 97
+  },
+  {
+    "Name": "Kodo Millet",
+    "Description": "Organic Kodo Millet rich in antioxidants and fiber. Helps support a balanced diet and healthy lifestyle. Ideal for diabetic-friendly recipes.",
+    "Price": 90,
+    "PictureUrl": "/images/products/sb-ts1.png",
+    "Type": "Millet",
+    "Brand": "NaturesChakki",
+    "QuantityInStock": 37
+  },
+  {
+    "Name": "Roasted Gram Flour",
+    "Description": "Protein-rich roasted gram flour prepared from premium quality chana. Ideal for traditional drinks, parathas, and healthy recipes. Provides natural energy and nutrition.",
+    "Price": 70,
+    "PictureUrl": "/images/products/hat-core1.png",
+    "Type": "Flour",
+    "Brand": "NaturesChakki",
+    "QuantityInStock": 32
+  },
+  {
+    "Name": "Bedmi Atta Masala Mix",
+    "Description": "Authentic Bedmi Atta blended with aromatic Indian spices. Specially crafted for crispy Bedmi puris and traditional dishes. Delivers rich taste and texture.",
+    "Price": 110,
+    "PictureUrl": "/images/products/hat-react1.png",
+    "Type": "Special Flour",
+    "Brand": "NaturesChakki",
+    "QuantityInStock": 6
+  },
+  {
+    "Name": "Special Diabetes Atta",
+    "Description": "Low GI multigrain atta formulated for diabetic-friendly diets. Made using carefully selected grains and seeds. Supports healthier eating habits and balanced nutrition.",
+    "Price": 130,
+    "PictureUrl": "/images/products/hat-react2.png",
+    "Type": "Health Flour",
+    "Brand": "NaturesChakki",
+    "QuantityInStock": 17
+  },
+  {
+    "Name": "Multigrain Atta",
+    "Description": "Nutritious blend of multiple grains for complete daily nutrition. Rich in fiber and minerals. Perfect for soft rotis and healthy meals.",
+    "Price": 100,
+    "PictureUrl": "/images/products/glove-code1.png",
+    "Type": "Flour",
+    "Brand": "NaturesChakki",
+    "QuantityInStock": 74
+  },
+  {
+    "Name": "Besan Flour",
+    "Description": "Finely ground chickpea flour prepared from premium quality chana dal. Rich in protein and widely used in Indian cooking and snacks.",
+    "Price": 75,
+    "PictureUrl": "/images/products/glove-code2.png",
+    "Type": "Flour",
+    "Brand": "NaturesChakki",
+    "QuantityInStock": 19
+  },
+  {
+    "Name": "Ragi Flour",
+    "Description": "Healthy Ragi Flour naturally rich in calcium and fiber. Supports bone health and healthy digestion. Excellent for traditional recipes.",
+    "Price": 85,
+    "PictureUrl": "/images/products/glove-react1.png",
+    "Type": "Flour",
+    "Brand": "NaturesChakki",
+    "QuantityInStock": 77
+  },
+  {
+    "Name": "Jowar Flour",
+    "Description": "Gluten-free Jowar Flour packed with natural nutrients and fiber. Suitable for healthy diets and soft rotis. Supports heart health and digestion.",
+    "Price": 80,
+    "PictureUrl": "/images/products/glove-react2.png",
+    "Type": "Flour",
+    "Brand": "NaturesChakki",
+    "QuantityInStock": 45
+  },
+  {
+    "Name": "Bajra Flour",
+    "Description": "Traditional Bajra Flour known for its rich taste and nutritional value. Provides warmth and energy, especially during winter seasons.",
+    "Price": 70,
+    "PictureUrl": "/images/products/boot-redis1.png",
+    "Type": "Flour",
+    "Brand": "NaturesChakki",
+    "QuantityInStock": 49
+  },
+  {
+    "Name": "Rice Flour",
+    "Description": "Premium rice flour with smooth texture and purity. Commonly used in baking, snacks, and traditional recipes. Easy to digest and versatile.",
+    "Price": 60,
+    "PictureUrl": "/images/products/boot-core2.png",
+    "Type": "Flour",
+    "Brand": "NaturesChakki",
+    "QuantityInStock": 28
+  },
+  {
+    "Name": "Makki Atta",
+    "Description": "Traditional Makki Atta made from quality corn grains. Perfect for authentic Indian Makki ki roti. Rich taste with natural nutrition.",
+    "Price": 65,
+    "PictureUrl": "/images/products/boot-core1.png",
+    "Type": "Flour",
+    "Brand": "NaturesChakki",
+    "QuantityInStock": 69
+  },
+  {
+    "Name": "White Makki Atta",
+    "Description": "Premium white corn flour with soft texture and delicious flavor. Ideal for preparing healthy traditional meals and snacks.",
+    "Price": 70,
+    "PictureUrl": "/images/products/boot-ang2.png",
+    "Type": "Flour",
+    "Brand": "NaturesChakki",
+    "QuantityInStock": 35
+  },
+  {
+    "Name": "Khapli Atta",
+    "Description": "Ancient grain Khapli Atta prepared from premium emmer wheat. Rich in protein and dietary fiber. Supports healthy digestion and balanced nutrition.",
+    "Price": 140,
+    "PictureUrl": "/images/products/boot-ang1.png",
+    "Type": "Health Flour",
+    "Brand": "NaturesChakki",
+    "QuantityInStock": 27
+  }
+]
