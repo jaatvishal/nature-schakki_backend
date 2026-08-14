@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, OnInit, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { MatButton } from '@angular/material/button';
@@ -13,7 +13,7 @@ import { SnackbarService } from '../../../core/services/snackbar.service';
   imports: [ReactiveFormsModule, MatFormField, MatLabel, MatInput, MatButton, RouterLink],
   templateUrl: './register.component.html',
 })
-export class RegisterComponent {
+export class RegisterComponent implements OnInit {
   private fb = inject(FormBuilder);
   private authService = inject(AuthService);
   private router = inject(Router);
@@ -26,26 +26,20 @@ export class RegisterComponent {
     password: ['', [Validators.required, Validators.minLength(6)]],
   });
 
+  ngOnInit() {
+    if (this.authService.isLoggedIn()) this.router.navigateByUrl('/shop');
+  }
+
   onSubmit() {
     if (this.registerForm.invalid) return;
-
     this.authService.register(this.registerForm.getRawValue() as {
-      firstName: string;
-      lastName: string;
-      email: string;
-      password: string;
+      firstName: string; lastName: string; email: string; password: string;
     }).subscribe({
       next: () => {
-        this.snackbar.success('Account created successfully');
+        this.snackbar.success('Account created');
         this.router.navigateByUrl(this.authService.getPostLoginRoute());
       },
-      error: (err: string[] | unknown) => {
-        if (Array.isArray(err)) {
-          err.forEach(e => this.snackbar.error(e));
-        } else {
-          this.snackbar.error('Registration failed');
-        }
-      },
+      error: () => this.snackbar.error('Registration failed'),
     });
   }
 }

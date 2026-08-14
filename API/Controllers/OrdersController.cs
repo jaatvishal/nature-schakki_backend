@@ -45,6 +45,11 @@ public class OrdersController(
         var order = await orderService.CreateOrderAsync(
             userId, email, address, dto.DeliveryMethodId, cart.Items, dto.CouponCode);
 
+        if (dto.PaymentMethod.Equals("cod", StringComparison.OrdinalIgnoreCase))
+            await orderService.UpdateOrderStatusAsync(order.Id, OrderStatus.Processing);
+        else
+            await orderService.UpdateOrderStatusAsync(order.Id, OrderStatus.PaymentReceived);
+
         await cartService.DeleteCartAsync(cartId);
         return Ok(order);
     }

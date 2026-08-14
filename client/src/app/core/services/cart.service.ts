@@ -1,92 +1,74 @@
 import { HttpClient } from '@angular/common/http';
 import { computed, inject, Injectable, signal } from '@angular/core';
-import { tap } from 'rxjs';
+import { Router } from '@angular/router';
+import { Observable, switchMap, tap } from 'rxjs';
 import { environment } from '../../../environments/environment';
+import { AuthService } from './auth.service';
 import { CartItem, ShoppingCart } from '../../shared/models/cart';
 import { Product } from '../../shared/models/product';
 
-const BUYER_ID_KEY = 'buyerId';
+const GUEST_ID_KEY = 'guestCartId';
 
-@Injectable({
-  providedIn: 'root',
-})
+@Injectable({ providedIn: 'root' })
 export class CartService {
   private http = inject(HttpClient);
-  private baseUrl = environment.apiUrl + '/cart';
-
+  private auth = inject(AuthService);
+  private router = inject(Router);
+  private baseUrl = environment.apiUrl + '/v1/cart';
   private cartSignal = signal<ShoppingCart | null>(null);
 
   cart = computed(() => this.cartSignal());
-  itemCount = computed(() =>
-    this.cartSignal()?.items.reduce((sum, item) => sum + item.quantity, 0) ?? 0
-  );
-  subtotal = computed(() =>
-    this.cartSignal()?.items.reduce((sum, item) => sum + item.price * item.quantity, 0) ?? 0
-  );
+  itemCount = computed(() => this.cartSignal()?.items.reduce((s, i) => s + i.quantity, 0) ?? 0);
+  subtotal = computed(() => this.cartSignal()?.items.reduce((s, i) => s + i.price * i.quantity, 0) ?? 0);
 
-  getBuyerId(): string {
-    let buyerId = localStorage.getItem(BUYER_ID_KEY);
-    if (!buyerId) {
-      buyerId = crypto.randomUUID();
-      localStorage.setItem(BUYER_ID_KEY, buyerId);
+  getCartId(): string {
+    const userId = this.auth.getUserId();
+    if (userId) return userId.toString();
+    let guestId = localStorage.getItem(GUEST_ID_KEY);
+    if (!guestId) {
+      guestId = crypto.randomUUID();
+      localStorage.setItem(GUEST_ID_KEY, guestId);
     }
-    return buyerId;
+    return guestId;
   }
 
   getCart() {
-    const id = this.getBuyerId();
-    return this.http.get<ShoppingCart>(this.baseUrl, { params: { id } }).pipe(
-      tap(cart => this.cartSignal.set(cart))
+    return this.http.get<ShoppingCart>(this.baseUrl, { params: { id: this.getCartId() } }).pipe(
+      tap(c => this.cartSignal.set(c))
     );
   }
 
   setCart(cart: ShoppingCart) {
-    return this.http.post<ShoppingCart>(this.baseUrl, cart).pipe(
-      tap(updated => this.cartSignal.set(updated))
-    );
+    return this.http.post<ShoppingCart>(this.baseUrl, cart).pipe(tap(c => this.cartSignal.set(c)));
   }
 
   deleteCart() {
-    const id = this.getBuyerId();
-    return this.http.delete(this.baseUrl, { params: { id } }).pipe(
-      tap(() => this.cartSignal.set({ id, items: [] }))
-    );
+    const id = this.getCartId();
+    return this.http.delete(this.baseUrl, { params: { id } }).pipe(tap(() => this.cartSignal.set({ id, items: [] })));
   }
 
-  addItem(product: Product, quantity = 1) {
-    const cart = this.cartSignal() ?? { id: this.getBuyerId(), items: [] };
+  addItem(product: Product, quantity = 1): Observable<ShoppingCart> {
+    if (!this.auth.isLoggedIn()) {
+      this.router.navigate(['/auth/login'], { queryParams: { returnUrl: this.router.url } });
+      throw new Error('login required');
+    }
+    const cart = this.cartSignal() ?? { id: this.getCartId(), items: [] };
     const existing = cart.items.find(i => i.productId === product.id);
-
     const items: CartItem[] = existing
-      ? cart.items.map(i =>
-          i.productId === product.id ? { ...i, quantity: i.quantity + quantity } : i
-        )
-      : [
-          ...cart.items,
-          {
-            productId: product.id,
-            productName: product.name,
-            price: product.price,
-            quantity,
-            pictureUrl: product.pictureUrl,
-            brand: product.brand,
-            type: product.type ?? '',
-          },
-        ];
-
-    return this.setCart({ id: cart.id, items });
+      ? cart.items.map(i => i.productId === product.id ? { ...i, quantity: i.quantity + quantity } : i)
+      : [...cart.items, {
+          productId: product.id, productName: product.name, price: product.price, quantity,
+          pictureUrl: product.pictureUrl, brand: product.brand, type: product.type ?? '',
+        }];
+    return this.setCart({ id: this.getCartId(), items });
   }
 
   updateQuantity(productId: number, quantity: number) {
     const cart = this.cartSignal();
     if (!cart) return;
-
-    const items =
-      quantity <= 0
-        ? cart.items.filter(i => i.productId !== productId)
-        : cart.items.map(i => (i.productId === productId ? { ...i, quantity } : i));
-
-    return this.setCart({ ...cart, items });
+    const items = quantity <= 0 ? cart.items.filter(i => i.productId !== productId)
+      : cart.items.map(i => i.productId === productId ? { ...i, quantity } : i);
+    return this.setCart({ ...cart, id: this.getCartId(), items });
   }
 
   removeItem(productId: number) {
@@ -94,8 +76,28 @@ export class CartService {
   }
 
   initCart() {
-  if (!this.cartSignal()) {
-    this.getCart().subscribe();
+    if (this.auth.isLoggedIn()) this.getCart().subscribe();
   }
+
+  mergeGuestCartOnLogin() {
+    const guestId = localStorage.getItem(GUEST_ID_KEY);
+    const userId = this.auth.getUserId()?.toString();
+    if (!guestId || !userId || guestId === userId) return this.getCart();
+    return this.http.get<ShoppingCart>(this.baseUrl, { params: { id: guestId } }).pipe(
+      switchMap(guest => {
+        if (!guest.items.length) return this.getCart();
+        return this.http.get<ShoppingCart>(this.baseUrl, { params: { id: userId } }).pipe(
+          switchMap(userCart => {
+            const merged = [...(userCart.items ?? [])];
+            guest.items.forEach(g => {
+              const ex = merged.find(m => m.productId === g.productId);
+              if (ex) ex.quantity += g.quantity; else merged.push(g);
+            });
+            return this.setCart({ id: userId, items: merged });
+          })
+        );
+      }),
+      tap(() => localStorage.removeItem(GUEST_ID_KEY))
+    );
   }
 }

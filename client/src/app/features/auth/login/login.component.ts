@@ -25,7 +25,6 @@ export class LoginComponent {
   private snackbar = inject(SnackbarService);
 
   hidePassword = signal(true);
-
   loginForm = this.fb.group({
     email: ['', [Validators.required, Validators.email]],
     password: ['', Validators.required],
@@ -35,10 +34,13 @@ export class LoginComponent {
     if (this.loginForm.invalid) return;
     this.authService.login(this.loginForm.getRawValue() as { email: string; password: string }).subscribe({
       next: () => {
-        this.snackbar.success('Welcome back!');
-        this.cartService.initCart();
-        const returnUrl = this.route.snapshot.queryParams['returnUrl'];
-        this.router.navigateByUrl(returnUrl || this.authService.getPostLoginRoute());
+        this.cartService.mergeGuestCartOnLogin().subscribe({
+          next: () => {
+            this.snackbar.success('Welcome back!');
+            const returnUrl = this.route.snapshot.queryParams['returnUrl'];
+            this.router.navigateByUrl(returnUrl || this.authService.getPostLoginRoute());
+          },
+        });
       },
       error: (err: HttpErrorResponse) => {
         const msg = typeof err.error === 'string' ? err.error : err.error?.message || 'Invalid email or password';

@@ -25,6 +25,7 @@ export type Order = {
 export type CreateOrderRequest = {
   deliveryMethodId: number;
   shippingAddress: Address;
+  paymentMethod: string;
 };
 
 export type DeliveryMethod = {

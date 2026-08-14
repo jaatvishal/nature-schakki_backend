@@ -22,13 +22,14 @@ export class OrderService {
       shipToAddress: {
         firstName: request.shippingAddress.firstName,
         lastName: request.shippingAddress.lastName,
-        street: request.shippingAddress.address1,
+        street: request.shippingAddress.street || request.shippingAddress.address1,
         city: request.shippingAddress.city,
         state: request.shippingAddress.state,
         zipCode: request.shippingAddress.zipCode,
         country: request.shippingAddress.country,
       },
       deliveryMethodId: request.deliveryMethodId,
+      paymentMethod: request.paymentMethod,
     });
   }
 

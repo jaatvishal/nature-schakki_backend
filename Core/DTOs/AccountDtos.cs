@@ -17,6 +17,7 @@ public class RegisterDto
 
 public class UserDto
 {
+    public int UserId { get; set; }
     public string Email { get; set; } = string.Empty;
     public string DisplayName { get; set; } = string.Empty;
     public string FirstName { get; set; } = string.Empty;
@@ -54,6 +55,7 @@ public class CreateOrderDto
     public AddressDto ShipToAddress { get; set; } = new();
     public int DeliveryMethodId { get; set; }
     public string? CouponCode { get; set; }
+    public string PaymentMethod { get; set; } = "cod";
 }
 
 public class OrderDto

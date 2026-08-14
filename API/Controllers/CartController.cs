@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace API.Controllers;
 
 [ApiVersion("1.0")]
+[Route("api/[controller]")]
 [Route("api/v{version:apiVersion}/[controller]")]
 [ApiController]
 public class CartController(ICartService cartService) : ControllerBase
@@ -27,7 +28,6 @@ public class CartController(ICartService cartService) : ControllerBase
     [HttpDelete]
     public async Task<IActionResult> DeleteCart(string id)
     {
-        var deleted = await cartService.DeleteCartAsync(id);
-        return deleted ? Ok() : BadRequest("Problem deleting the cart");
+        return await cartService.DeleteCartAsync(id) ? Ok() : BadRequest("Problem deleting the cart");
     }
 }

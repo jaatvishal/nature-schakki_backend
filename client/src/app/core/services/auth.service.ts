@@ -20,12 +20,14 @@ export class AuthService {
   isLoggedIn = computed(() => !!this.getToken() && !!this.userSignal());
   isAdmin = computed(() => this.userSignal()?.roles?.includes('Admin') ?? false);
 
+  getUserId(): number | null {
+    return this.userSignal()?.id ?? null;
+  }
+
   register(request: RegisterRequest) {
     return this.http.post<AuthResponse>(`${this.baseUrl}/register`, {
-      email: request.email,
-      password: request.password,
-      firstName: request.firstName,
-      lastName: request.lastName,
+      email: request.email, password: request.password,
+      firstName: request.firstName, lastName: request.lastName,
     }).pipe(tap(r => this.setUser(r)));
   }
 
@@ -34,9 +36,7 @@ export class AuthService {
   }
 
   logout() {
-    if (this.getToken()) {
-      this.http.post(`${this.baseUrl}/logout`, {}).subscribe({ error: () => {} });
-    }
+    if (this.getToken()) this.http.post(`${this.baseUrl}/logout`, {}).subscribe({ error: () => {} });
     localStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem(REFRESH_KEY);
     localStorage.removeItem(USER_KEY);
@@ -54,9 +54,7 @@ export class AuthService {
 
   refreshToken() {
     const refreshToken = localStorage.getItem(REFRESH_KEY);
-    return this.http.post<AuthResponse>(`${this.baseUrl}/refresh-token`, { refreshToken }).pipe(
-      tap(r => this.setUser(r))
-    );
+    return this.http.post<AuthResponse>(`${this.baseUrl}/refresh-token`, { refreshToken }).pipe(tap(r => this.setUser(r)));
   }
 
   getToken(): string | null {
@@ -70,6 +68,7 @@ export class AuthService {
   private setUser(response: AuthResponse) {
     const parts = (response.displayName || '').split(' ', 2);
     const user: User = {
+      id: response.userId,
       email: response.email,
       firstName: response.firstName || parts[0] || response.email,
       lastName: response.lastName || (parts[1] ?? ''),
@@ -87,8 +86,6 @@ export class AuthService {
     try {
       const stored = localStorage.getItem(USER_KEY);
       return stored && this.getToken() ? (JSON.parse(stored) as User) : null;
-    } catch {
-      return null;
-    }
+    } catch { return null; }
   }
 }

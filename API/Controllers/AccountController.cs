@@ -152,6 +152,7 @@ public class AccountController(
         var parts = user.DisplayName.Split(' ', 2);
         var dto = new UserDto
         {
+            UserId = user.Id,
             Email = user.Email!,
             DisplayName = user.DisplayName,
             FirstName = parts.Length > 0 ? parts[0] : user.DisplayName,

@@ -7,7 +7,7 @@
       <a mat-flat-button color="primary" routerLink="/shop">Continue Shopping</a>
     </div>
   } @else {
-    <mat-stepper [linear]="true" [selectedIndex]="step()">
+    <mat-stepper [linear]="true">
       <mat-step [stepControl]="addressForm" label="Address">
         <form [formGroup]="addressForm" class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
           <mat-form-field appearance="outline">
@@ -97,8 +97,9 @@
 
         <div class="flex gap-2">
           <button mat-stroked-button matStepperPrevious>Back</button>
-          <button mat-flat-button color="primary" (click)="placeOrder()" [disabled]="paymentForm.invalid">
-            Place Order
+          <button mat-flat-button color="primary" (click)="placeOrder()"
+            [disabled]="paymentForm.invalid || placing()">
+            {{ placing() ? 'Placing Order...' : 'Place Order' }}
           </button>
         </div>
       </mat-step>

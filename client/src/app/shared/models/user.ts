@@ -1,4 +1,5 @@
 export type User = {
+  id: number;
   email: string;
   firstName: string;
   lastName: string;
@@ -19,6 +20,7 @@ export type RegisterRequest = {
 };
 
 export type AuthResponse = {
+  userId: number;
   email: string;
   firstName?: string;
   lastName?: string;
