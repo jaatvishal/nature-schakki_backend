@@ -102,6 +102,7 @@ public class OrderService(
         return await context.Orders
             .AsNoTracking()
             .Include(x => x.OrderItems)
+            .Include(x => x.DeliveryMethod)
             .Where(x => x.UserId == userId)
             .OrderByDescending(x => x.OrderDate)
             .ToListAsync();

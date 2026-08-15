@@ -66,6 +66,10 @@ public class AccountController(
     }
 
     [Authorize]
+    [HttpGet("profile")]
+    public Task<ActionResult<UserDto>> GetProfile() => GetCurrentUser();
+
+    [Authorize]
     [HttpGet("current")]
     [HttpGet("current-user")]
     public async Task<ActionResult<UserDto>> GetCurrentUser()
