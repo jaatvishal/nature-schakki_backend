@@ -1,38 +1,33 @@
-﻿using Core.Entities;
+﻿using Asp.Versioning;
+using Core.Entities;
 using Core.Interfaces;
-using Infrastructure.Services;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using StackExchange.Redis;
 
-namespace API.Controllers
+namespace API.Controllers;
+
+[ApiVersion("1.0")]
+[Route("api/[controller]")]
+[Route("api/v{version:apiVersion}/[controller]")]
+[ApiController]
+public class CartController(ICartService cartService) : ControllerBase
 {
-    [Route("api/[controller]")]
-    //[ApiController]
-    public class CartController(ICartService cartService) : ControllerBase
+    [HttpGet]
+    public async Task<ActionResult<ShoppingCart>> GetCartById(string id)
     {
-        [HttpGet]
-        public async Task<ActionResult<ShoppingCart>> GetCartById(string id)
-        {
-            var cart = await cartService.GetCartAsync(id);
+        var cart = await cartService.GetCartAsync(id);
+        return Ok(cart ?? new ShoppingCart { Id = id });
+    }
 
-            return Ok(cart ?? new ShoppingCart { Id = id });
-        }
+    [HttpPost]
+    public async Task<ActionResult<ShoppingCart>> UpdateCart(ShoppingCart cart)
+    {
+        var updatedCart = await cartService.SetCartAsync(cart);
+        return updatedCart == null ? BadRequest("Problem updating the cart") : Ok(updatedCart);
+    }
 
-        [HttpPost]
-        public async Task<ActionResult<ShoppingCart>> UpdateCart(ShoppingCart cart)
-        {
-            var updatedCart = await cartService.SetCartAsync(cart);
-            if (updatedCart == null) return BadRequest("Problem updating the cart");
-            return Ok(updatedCart);
-        }
-        [HttpDelete]
-        public async Task<IActionResult> DeleteCart(string id)
-        {
-            var deleted = await cartService.DeleteCartAsync(id);
-            if (!deleted) return BadRequest("Problem deleting the cart");
-            return Ok();
-
-        }
+    [HttpDelete]
+    public async Task<IActionResult> DeleteCart(string id)
+    {
+        return await cartService.DeleteCartAsync(id) ? Ok() : BadRequest("Problem deleting the cart");
     }
 }

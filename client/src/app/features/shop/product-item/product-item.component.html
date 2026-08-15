@@ -1,0 +1,15 @@
+@if (product) {
+  <mat-card appearance="raised" routerLink="/shop/{{ product.id }}" class="product-card">
+    <img [src]="product.pictureUrl" class="rounded-t-lg h-48 object-cover w-full" alt="{{ product.name }}" />
+    <mat-card-content class="!p-4">
+      <p class="text-xs text-amber-700 font-medium uppercase">{{ product.brand }}</p>
+      <h2 class="text-sm font-semibold mt-1 line-clamp-2">{{ product.name }}</h2>
+      <p class="font-bold text-lg mt-2">{{ product.price | currency: 'INR' }}</p>
+    </mat-card-content>
+    <div class="px-4 pb-4">
+      <button mat-stroked-button class="w-full" (click)="addToCart($event)">
+        <mat-icon>add_shopping_cart</mat-icon> Add to Cart
+      </button>
+    </div>
+  </mat-card>
+}

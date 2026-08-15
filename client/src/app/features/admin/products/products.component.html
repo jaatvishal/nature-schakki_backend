@@ -1,0 +1,40 @@
+<div class="max-w-6xl mx-auto py-8 px-4">
+  <div class="flex items-center justify-between mb-6">
+    <h1 class="text-2xl font-bold">Manage Products</h1>
+    <div class="flex gap-2">
+      <button mat-flat-button color="primary" (click)="showForm.set(!showForm())">
+        {{ showForm() ? 'Cancel' : 'Add Product' }}
+      </button>
+      <a mat-stroked-button routerLink="/admin">Dashboard</a>
+    </div>
+  </div>
+
+  @if (showForm()) {
+    <form [formGroup]="productForm" (ngSubmit)="addProduct()" class="grid sm:grid-cols-2 gap-4 mb-8 p-4 border rounded-lg bg-gray-50">
+      <mat-form-field appearance="outline"><mat-label>Name</mat-label><input matInput formControlName="name" /></mat-form-field>
+      <mat-form-field appearance="outline"><mat-label>Brand</mat-label><input matInput formControlName="brand" /></mat-form-field>
+      <mat-form-field appearance="outline"><mat-label>Type</mat-label><input matInput formControlName="type" /></mat-form-field>
+      <mat-form-field appearance="outline"><mat-label>Price</mat-label><input matInput type="number" formControlName="price" /></mat-form-field>
+      <mat-form-field appearance="outline"><mat-label>Stock</mat-label><input matInput type="number" formControlName="quantityInStock" /></mat-form-field>
+      <mat-form-field appearance="outline"><mat-label>Image URL</mat-label><input matInput formControlName="pictureUrl" /></mat-form-field>
+      <mat-form-field appearance="outline" class="sm:col-span-2"><mat-label>Description</mat-label><input matInput formControlName="description" /></mat-form-field>
+      <button mat-flat-button color="primary" type="submit" [disabled]="productForm.invalid">Save Product</button>
+    </form>
+  }
+
+  @if (products()) {
+    <table class="w-full text-left border-collapse text-sm">
+      <thead><tr class="border-b bg-gray-50">
+        <th class="p-3">ID</th><th class="p-3">Name</th><th class="p-3">Brand</th><th class="p-3">Price</th><th class="p-3">Stock</th>
+      </tr></thead>
+      <tbody>
+        @for (p of products()!.data; track p.id) {
+          <tr class="border-b hover:bg-gray-50">
+            <td class="p-3">{{ p.id }}</td><td class="p-3">{{ p.name }}</td><td class="p-3">{{ p.brand }}</td>
+            <td class="p-3">{{ p.price | currency: 'INR' }}</td><td class="p-3">{{ p.quantityInStock }}</td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  }
+</div>

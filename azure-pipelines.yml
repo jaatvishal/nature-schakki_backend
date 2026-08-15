@@ -1,0 +1,161 @@
+# Azure DevOps Pipeline — Natures Chakki
+# https://docs.microsoft.com/azure/devops/pipelines/
+
+trigger:
+  branches:
+    include:
+      - main
+      - cursor/*
+
+pr:
+  branches:
+    include:
+      - main
+
+pool:
+  vmImage: ubuntu-latest
+
+variables:
+  buildConfiguration: Release
+  dotnetVersion: '9.0.x'
+  nodeVersion: '20.x'
+
+stages:
+  - stage: Build
+    displayName: Build
+    jobs:
+      - job: BuildBackend
+        displayName: Build .NET API
+        steps:
+          - task: UseDotNet@2
+            displayName: Install .NET SDK
+            inputs:
+              packageType: sdk
+              version: $(dotnetVersion)
+
+          - script: dotnet restore Natures_Chakki_Backend.sln
+            displayName: Restore NuGet packages
+
+          - script: dotnet build Natures_Chakki_Backend.sln -c $(buildConfiguration) --no-restore
+            displayName: Build solution
+
+          - script: dotnet publish API/API.csproj -c $(buildConfiguration) -o $(Build.ArtifactStagingDirectory)/api --no-build
+            displayName: Publish API
+
+          - task: PublishBuildArtifacts@1
+            displayName: Publish API artifact
+            inputs:
+              PathtoPublish: $(Build.ArtifactStagingDirectory)/api
+              ArtifactName: api
+
+      - job: BuildFrontend
+        displayName: Build Angular client
+        steps:
+          - task: NodeTool@0
+            displayName: Install Node.js
+            inputs:
+              versionSpec: $(nodeVersion)
+
+          - script: npm ci
+            displayName: Install npm packages
+            workingDirectory: client
+
+          - script: npm run build
+            displayName: Build Angular app
+            workingDirectory: client
+
+          - task: PublishBuildArtifacts@1
+            displayName: Publish client artifact
+            inputs:
+              PathtoPublish: client/dist
+              ArtifactName: client
+
+  - stage: Test
+    displayName: Test
+    dependsOn: Build
+    jobs:
+      - job: UnitAndIntegrationTests
+        displayName: Run .NET tests
+        steps:
+          - task: UseDotNet@2
+            inputs:
+              packageType: sdk
+              version: $(dotnetVersion)
+
+          - script: dotnet test Tests/Tests.csproj -c $(buildConfiguration) --logger trx --collect:"XPlat Code Coverage"
+            displayName: Run xUnit tests
+
+          - task: PublishTestResults@2
+            displayName: Publish test results
+            inputs:
+              testResultsFormat: VSTest
+              testResultsFiles: '**/*.trx'
+            condition: succeededOrFailed()
+
+      - job: AngularTests
+        displayName: Run Angular tests
+        steps:
+          - task: NodeTool@0
+            inputs:
+              versionSpec: $(nodeVersion)
+
+          - script: npm ci
+            workingDirectory: client
+
+          - script: npm test -- --run
+            displayName: Run Vitest
+            workingDirectory: client
+
+  - stage: Publish
+    displayName: Publish
+    dependsOn: Test
+    condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
+    jobs:
+      - deployment: DeployAPI
+        displayName: Deploy API to Azure App Service
+        environment: production
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - download: current
+                  artifact: api
+
+                - task: AzureWebApp@1
+                  displayName: Deploy to App Service
+                  inputs:
+                    azureSubscription: $(azureServiceConnection)
+                    appType: webAppLinux
+                    appName: $(appServiceName)
+                    package: $(Pipeline.Workspace)/api
+
+      - deployment: DeployFrontend
+        displayName: Deploy Angular to Static Web App / CDN
+        environment: production
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - download: current
+                  artifact: client
+
+                - task: AzureStaticWebApp@0
+                  displayName: Deploy Static Web App
+                  inputs:
+                    app_location: $(Pipeline.Workspace)/client
+                    skip_app_build: true
+                    azure_static_web_apps_api_token: $(staticWebAppToken)
+
+      - job: DockerBuild
+        displayName: Build and push Docker image
+        steps:
+          - task: Docker@2
+            displayName: Build and push
+            inputs:
+              containerRegistry: $(dockerRegistryServiceConnection)
+              repository: natureschakki-api
+              command: buildAndPush
+              Dockerfile: Dockerfile
+              tags: |
+                $(Build.BuildId)
+                latest

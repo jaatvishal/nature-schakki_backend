@@ -1,0 +1,37 @@
+<div class="max-w-4xl mx-auto py-8 px-4">
+  <h1 class="text-2xl font-bold mb-6">My Orders</h1>
+
+  @if (loading()) {
+    <p class="text-gray-500">Loading orders...</p>
+  } @else if (orders().length) {
+    <div class="space-y-3">
+      @for (order of orders(); track order.id) {
+        <div class="border rounded-lg p-4 hover:shadow-md transition">
+          <div class="flex flex-col sm:flex-row justify-between gap-3">
+            <div>
+              <p class="font-semibold text-lg">Order #{{ order.id }}</p>
+              <p class="text-sm text-gray-500">{{ order.orderDate | date:'medium' }}</p>
+              <span class="inline-block mt-1 px-2 py-0.5 rounded text-xs font-medium"
+                [class]="order.status === 'Delivered' ? 'bg-green-100 text-green-800' : 'bg-amber-100 text-amber-800'">
+                {{ order.status }}
+              </span>
+              @if (order.deliveryMethod) {
+                <p class="text-sm text-gray-500 mt-1">Delivery: {{ order.deliveryMethod.shortName }}</p>
+              }
+            </div>
+            <div class="text-right">
+              <p class="text-xl font-bold">{{ order.total | currency:'INR' }}</p>
+              <p class="text-sm text-gray-500">{{ order.orderItems?.length ?? 0 }} item(s)</p>
+              <a mat-stroked-button [routerLink]="['/account/orders', order.id]" class="mt-2">Track Order</a>
+            </div>
+          </div>
+        </div>
+      }
+    </div>
+  } @else {
+    <div class="text-center py-16 text-gray-500">
+      <p class="mb-4">No orders yet</p>
+      <a mat-flat-button color="primary" routerLink="/shop">Start Shopping</a>
+    </div>
+  }
+</div>

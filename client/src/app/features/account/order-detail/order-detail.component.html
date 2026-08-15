@@ -1,0 +1,50 @@
+<div class="max-w-4xl mx-auto py-8 px-4">
+  <a mat-stroked-button routerLink="/account/orders" class="mb-4">← Back to Orders</a>
+
+  @if (loading()) {
+    <p class="text-gray-500">Loading...</p>
+  } @else if (order(); as o) {
+    <h1 class="text-2xl font-bold mb-2">Order #{{ o.id }}</h1>
+    <p class="text-gray-500 mb-6">{{ o.orderDate | date: 'medium' }}</p>
+
+    <!-- Status Tracker -->
+    <div class="flex justify-between mb-8 relative">
+      @for (step of steps; track step; let i = $index) {
+        <div class="flex flex-col items-center flex-1 z-10">
+          <div class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold"
+            [class]="isActive(o.status, step) ? 'bg-amber-600 text-white' : 'bg-gray-200 text-gray-500'">
+            @if (isActive(o.status, step)) { <mat-icon class="!text-sm !w-4 !h-4">check</mat-icon> } @else { {{ i + 1 }} }
+          </div>
+          <span class="text-xs mt-1 text-center" [class.font-semibold]="o.status === step">{{ label(step) }}</span>
+        </div>
+      }
+      <div class="absolute top-4 left-0 right-0 h-0.5 bg-gray-200 -z-0"></div>
+    </div>
+
+    <div class="grid md:grid-cols-2 gap-6 mb-8">
+      <div class="border rounded-lg p-4">
+        <h2 class="font-semibold mb-2">Shipping</h2>
+        <p>{{ o.shipToAddress.firstName }} {{ o.shipToAddress.lastName }}</p>
+        <p>{{ o.shipToAddress.street }}</p>
+        <p>{{ o.shipToAddress.city }}, {{ o.shipToAddress.state }} {{ o.shipToAddress.zipCode }}</p>
+      </div>
+      <div class="border rounded-lg p-4">
+        <h2 class="font-semibold mb-2">Summary</h2>
+        <p>Status: <span class="font-medium text-amber-700">{{ label(o.status) }}</span></p>
+        <p>Delivery: {{ o.deliveryMethod?.shortName }}</p>
+        <p class="text-xl font-bold mt-2">{{ o.total | currency: 'INR' }}</p>
+      </div>
+    </div>
+
+    <h2 class="font-semibold mb-3">Items</h2>
+    @for (item of o.orderItems; track item.productId) {
+      <div class="flex gap-4 items-center border rounded-lg p-3 mb-2">
+        <img [src]="item.pictureUrl" class="w-16 h-16 object-cover rounded" [alt]="item.productName" />
+        <div class="flex-1"><p class="font-medium">{{ item.productName }}</p><p class="text-sm text-gray-500">Qty: {{ item.quantity }}</p></div>
+        <p class="font-semibold">{{ item.price * item.quantity | currency: 'INR' }}</p>
+      </div>
+    }
+  } @else {
+    <p class="text-gray-500">Order not found</p>
+  }
+</div>

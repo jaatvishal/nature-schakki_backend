@@ -1,0 +1,43 @@
+<div class="max-w-6xl mx-auto py-8 px-4">
+  <div class="flex items-center justify-between mb-6">
+    <h1 class="text-2xl font-bold">Manage Orders</h1>
+    <a mat-stroked-button routerLink="/admin">Dashboard</a>
+  </div>
+
+  @if (orders().length) {
+    <div class="overflow-x-auto">
+      <table class="w-full text-left border-collapse text-sm">
+        <thead><tr class="border-b bg-gray-50">
+          <th class="p-3">ID</th><th class="p-3">Customer</th><th class="p-3">Date</th>
+          <th class="p-3">Status</th><th class="p-3">Payment</th><th class="p-3">Total</th><th class="p-3">Action</th>
+        </tr></thead>
+        <tbody>
+          @for (order of orders(); track order.id) {
+            <tr class="border-b">
+              <td class="p-3">#{{ order.id }}</td>
+              <td class="p-3">{{ order.buyerEmail }}</td>
+              <td class="p-3">{{ order.orderDate | date: 'short' }}</td>
+              <td class="p-3">{{ label(order.status) }}</td>
+              <td class="p-3">
+                <span class="px-2 py-1 rounded text-xs"
+                  [class]="order.paymentStatus === 'Succeeded' ? 'bg-green-100' : 'bg-yellow-100'">
+                  {{ order.paymentStatus || 'Pending' }}
+                </span>
+              </td>
+              <td class="p-3">{{ order.total | currency: 'INR' }}</td>
+              <td class="p-3">
+                <mat-form-field appearance="outline" class="!w-36">
+                  <mat-select [value]="order.status" (selectionChange)="updateStatus(order, $event.value)">
+                    @for (s of statuses; track s) { <mat-option [value]="s">{{ label(s) }}</mat-option> }
+                  </mat-select>
+                </mat-form-field>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  } @else {
+    <p class="text-gray-500 text-center py-12">No orders yet</p>
+  }
+</div>

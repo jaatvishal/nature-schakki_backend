@@ -1,0 +1,104 @@
+<div class="max-w-3xl mx-auto py-8 px-4">
+  <h1 class="text-2xl font-bold mb-6">Checkout</h1>
+
+  @if (!cartService.cart()?.items?.length && !placedOrder()) {
+    <div class="text-center py-16 text-gray-500">
+      <p class="mb-4">Your cart is empty</p>
+      <a mat-flat-button color="primary" routerLink="/shop">Continue Shopping</a>
+    </div>
+  } @else {
+    <mat-stepper [linear]="true" #stepper>
+      <mat-step [stepControl]="addressForm" label="Address">
+        <form [formGroup]="addressForm" class="grid sm:grid-cols-2 gap-4 mt-4">
+          <mat-form-field appearance="outline"><mat-label>First Name</mat-label>
+            <input matInput formControlName="firstName" /><mat-error>Required (min 2 chars)</mat-error></mat-form-field>
+          <mat-form-field appearance="outline"><mat-label>Last Name</mat-label>
+            <input matInput formControlName="lastName" /><mat-error>Required</mat-error></mat-form-field>
+          <mat-form-field appearance="outline" class="sm:col-span-2"><mat-label>Phone</mat-label>
+            <input matInput formControlName="phone" placeholder="10-digit mobile" />
+            <mat-error>Valid 10-digit Indian mobile required</mat-error></mat-form-field>
+          <mat-form-field appearance="outline" class="sm:col-span-2"><mat-label>Street Address</mat-label>
+            <input matInput formControlName="address1" /><mat-error>Required</mat-error></mat-form-field>
+          <mat-form-field appearance="outline" class="sm:col-span-2"><mat-label>Landmark / Nearby</mat-label>
+            <input matInput formControlName="landmark" placeholder="e.g. Near City Mall" /></mat-form-field>
+          <mat-form-field appearance="outline"><mat-label>City</mat-label>
+            <input matInput formControlName="city" /></mat-form-field>
+          <mat-form-field appearance="outline"><mat-label>State</mat-label>
+            <input matInput formControlName="state" /></mat-form-field>
+          <mat-form-field appearance="outline"><mat-label>PIN Code</mat-label>
+            <input matInput formControlName="zipCode" /><mat-error>6-digit PIN required</mat-error></mat-form-field>
+          <mat-form-field appearance="outline"><mat-label>Country</mat-label>
+            <input matInput formControlName="country" /></mat-form-field>
+        </form>
+        <button mat-flat-button color="primary" matStepperNext class="mt-4" [disabled]="addressForm.invalid">Next</button>
+      </mat-step>
+
+      <mat-step [stepControl]="deliveryForm" label="Delivery">
+        <form [formGroup]="deliveryForm" class="mt-4">
+          <mat-radio-group formControlName="deliveryMethodId" class="flex flex-col gap-3">
+            @for (m of deliveryMethods(); track m.id) {
+              <mat-radio-button [value]="m.id">{{ m.shortName }} — {{ m.deliveryTimeDays }} days ({{ m.price | currency:'INR' }})</mat-radio-button>
+            }
+          </mat-radio-group>
+        </form>
+        <div class="mt-4 flex gap-2">
+          <button mat-stroked-button matStepperPrevious>Back</button>
+          <button mat-flat-button color="primary" matStepperNext [disabled]="deliveryForm.invalid">Next</button>
+        </div>
+      </mat-step>
+
+      <mat-step [stepControl]="paymentForm" label="Payment">
+        <form [formGroup]="paymentForm" class="mt-4">
+          <mat-radio-group formControlName="paymentMethod" class="flex flex-col gap-3">
+            <mat-radio-button value="cod">Cash on Delivery</mat-radio-button>
+            <mat-radio-button value="card">Credit / Debit Card</mat-radio-button>
+            <mat-radio-button value="upi">UPI</mat-radio-button>
+          </mat-radio-group>
+        </form>
+        <div class="bg-gray-50 p-4 rounded-lg mt-4 text-sm">
+          <div class="flex justify-between"><span>Subtotal</span><span>{{ cartService.subtotal() | currency:'INR' }}</span></div>
+          <div class="flex justify-between"><span>Delivery</span><span>{{ selectedDelivery()?.price ?? 0 | currency:'INR' }}</span></div>
+          <div class="flex justify-between font-bold mt-2"><span>Total</span><span>{{ total() | currency:'INR' }}</span></div>
+        </div>
+        <div class="mt-4 flex gap-2">
+          <button mat-stroked-button matStepperPrevious>Back</button>
+          <button mat-flat-button color="primary" matStepperNext [disabled]="paymentForm.invalid">Next</button>
+        </div>
+      </mat-step>
+
+      <mat-step label="Confirm">
+        <div class="mt-4 space-y-2 text-sm">
+          <p><strong>Deliver to:</strong> {{ addressForm.value.firstName }} {{ addressForm.value.lastName }}, {{ addressForm.value.address1 }}</p>
+          <p><strong>Payment:</strong> {{ paymentForm.value.paymentMethod | uppercase }}</p>
+          <p class="text-xl font-bold">Total: {{ total() | currency:'INR' }}</p>
+        </div>
+        @if (!placedOrder()) {
+          <div class="mt-4 flex gap-2">
+            <button mat-stroked-button matStepperPrevious [disabled]="placing()">Back</button>
+            <button mat-flat-button color="primary" (click)="placeOrder()" [disabled]="placing()">
+              {{ placing() ? 'Placing...' : 'Place Order' }}
+            </button>
+          </div>
+        }
+      </mat-step>
+    </mat-stepper>
+
+    @if (placedOrder(); as o) {
+      <div class="mt-6 p-6 bg-green-50 rounded-xl border border-green-200">
+        <p class="font-bold text-green-800 text-lg">Order #{{ o.id }} placed successfully!</p>
+        <p class="text-sm text-gray-600 mb-4">{{ o.orderDate | date:'medium' }}</p>
+        <div class="flex justify-between mb-2">
+          @for (s of statusSteps; track s; let i = $index) {
+            <div class="text-center flex-1">
+              <div class="w-8 h-8 mx-auto rounded-full text-xs flex items-center justify-center"
+                [class]="isStatusActive(o.status, s) ? 'bg-amber-600 text-white' : 'bg-gray-200'">{{ i+1 }}</div>
+              <span class="text-xs block mt-1">{{ label(s) }}</span>
+            </div>
+          }
+        </div>
+        <p class="font-medium mt-4">Status: <span class="text-amber-700">{{ label(o.status) }}</span></p>
+        <a mat-flat-button color="primary" [routerLink]="['/account/orders', o.id]" class="mt-4">View Full Details</a>
+      </div>
+    }
+  }
+</div>
