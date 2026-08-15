@@ -32,7 +32,7 @@ export class OrderDetailComponent implements OnInit, OnDestroy {
     this.orderNotifications.joinOrderGroup(orderId);
     this.unsubscribe = this.orderNotifications.onStatusChanged(event => {
       if (event.orderId === orderId) {
-        this.order.update(o => (o ? { ...o, status: event.status } : o));
+        this.orderService.getOrder(orderId).subscribe(o => this.order.set(o));
       }
     });
 
