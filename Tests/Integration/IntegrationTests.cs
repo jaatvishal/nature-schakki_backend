@@ -207,13 +207,6 @@ public class IntegrationTests : IClassFixture<CustomWebApplicationFactory>
     }
 
     [Fact]
-    public async Task GetNotifications_RequiresAuth()
-    {
-        var response = await _client.GetAsync("/api/v1/notifications");
-        Assert.False(response.IsSuccessStatusCode);
-    }
-
-    [Fact]
     public async Task SearchProducts_WithBrandFilter_ReturnsFilteredResults()
     {
         var response = await _client.GetAsync("/api/product?brands=NaturesChakki&pageIndex=1&pageSize=10");

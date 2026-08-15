@@ -1,10 +1,9 @@
 import { CurrencyPipe, DatePipe } from '@angular/common';
-import { ChangeDetectionStrategy, Component, inject, OnDestroy, OnInit, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, OnInit, signal } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { MatButton } from '@angular/material/button';
 import { MatIcon } from '@angular/material/icon';
 import { OrderService } from '../../../core/services/order.service';
-import { OrderNotificationService } from '../../../core/services/order-notification.service';
 import { Order } from '../../../shared/models/order';
 import { ORDER_STATUS_STEPS, orderStatusLabel, orderStepIndex } from '../../../shared/constants/order-status';
 
@@ -14,11 +13,9 @@ import { ORDER_STATUS_STEPS, orderStatusLabel, orderStepIndex } from '../../../s
   imports: [CurrencyPipe, DatePipe, MatButton, MatIcon, RouterLink],
   templateUrl: './order-detail.component.html',
 })
-export class OrderDetailComponent implements OnInit, OnDestroy {
+export class OrderDetailComponent implements OnInit {
   private orderService = inject(OrderService);
   private route = inject(ActivatedRoute);
-  private orderNotifications = inject(OrderNotificationService);
-  private unsubscribe?: () => void;
 
   order = signal<Order | null>(null);
   loading = signal(true);
@@ -28,22 +25,10 @@ export class OrderDetailComponent implements OnInit, OnDestroy {
     const id = this.route.snapshot.paramMap.get('id');
     if (!id) return;
 
-    const orderId = +id;
-    this.orderNotifications.joinOrderGroup(orderId);
-    this.unsubscribe = this.orderNotifications.onStatusChanged(event => {
-      if (event.orderId === orderId) {
-        this.orderService.getOrder(orderId).subscribe(o => this.order.set(o));
-      }
-    });
-
-    this.orderService.getOrder(orderId).subscribe({
+    this.orderService.getOrder(+id).subscribe({
       next: order => { this.order.set(order); this.loading.set(false); },
       error: () => this.loading.set(false),
     });
-  }
-
-  ngOnDestroy(): void {
-    this.unsubscribe?.();
   }
 
   stepIndex(status: string): number {

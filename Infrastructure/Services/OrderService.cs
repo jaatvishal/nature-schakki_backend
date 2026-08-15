@@ -12,9 +12,7 @@ namespace Infrastructure.Services;
 public class OrderService(
     StoreContext context,
     IInventoryService inventoryService,
-    ICouponService couponService,
-    INotificationService notificationService,
-    IOrderNotificationService orderNotificationService) : IOrderService
+    ICouponService couponService) : IOrderService
 {
     public async Task<Order> CreateOrderAsync(
         int userId, string buyerEmail, Address shipToAddress,
@@ -143,12 +141,6 @@ public class OrderService(
         }
 
         await context.SaveChangesAsync();
-
-        var title = OrderStatusRules.NotificationTitle(status);
-        var message = OrderStatusRules.NotificationMessage(status, order.Id);
-        await notificationService.CreateAsync(order.UserId, title, message, $"/account/orders/{order.Id}");
-        await orderNotificationService.NotifyOrderStatusChangedAsync(order.UserId, order.Id, status, message);
-
         return order;
     }
 

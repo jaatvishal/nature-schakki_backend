@@ -71,8 +71,6 @@ Cart stored in Memory or Redis (`CacheProvider`). Not in SQL.
 - `client/src/app/features/account/orders/orders.component.ts`
 - `client/src/app/features/account/order-detail/order-detail.component.ts`
 
-**Real-time:** `OrderHub` at `/hubs/order` — order status notifications via SignalR
-
 ---
 
 ## Payments

@@ -17,9 +17,7 @@ public class OrderServiceTests
         var context = new StoreContext(options);
         var inventory = new InventoryService(context);
         var coupon = new CouponService(context);
-        var notification = new NotificationService(context);
-        var orderNotification = new NoOpOrderNotificationService();
-        var orderService = new OrderService(context, inventory, coupon, notification, orderNotification);
+        var orderService = new OrderService(context, inventory, coupon);
         return (context, orderService);
     }
 

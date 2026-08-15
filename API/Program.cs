@@ -1,8 +1,5 @@
-using API.Hubs;
-using API.Services;
 using API.Middleware;
 using Asp.Versioning;
-using Core.Interfaces;
 using Infrastructure;
 using Infrastructure.Data;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -26,7 +23,6 @@ try
         config.ReadFrom.Configuration(context.Configuration).WriteTo.Console());
 
     builder.Services.AddInfrastructureServices(builder.Configuration, builder.Environment);
-    builder.Services.AddScoped<IOrderNotificationService, OrderNotificationService>();
 
     builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         .AddJwtBearer(options =>
@@ -42,17 +38,6 @@ try
                 IssuerSigningKey = new SymmetricSecurityKey(
                     Encoding.UTF8.GetBytes(builder.Configuration["JwtSettings:Key"]
                         ?? "super_secret_development_key_at_least_32_chars"))
-            };
-            options.Events = new JwtBearerEvents
-            {
-                OnMessageReceived = context =>
-                {
-                    var accessToken = context.Request.Query["access_token"];
-                    var path = context.HttpContext.Request.Path;
-                    if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/hubs"))
-                        context.Token = accessToken;
-                    return Task.CompletedTask;
-                }
             };
         });
 
@@ -74,7 +59,6 @@ try
         {
             options.JsonSerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
         });
-    builder.Services.AddSignalR();
     builder.Services.AddEndpointsApiExplorer();
     builder.Services.AddSwaggerGen(options =>
     {
@@ -147,7 +131,6 @@ try
     app.UseAuthorization();
 
     app.MapControllers();
-    app.MapHub<OrderHub>("/hubs/order");
     app.MapHealthChecks("/health");
 
     using (var scope = app.Services.CreateScope())
