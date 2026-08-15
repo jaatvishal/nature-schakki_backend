@@ -1,4 +1,3 @@
-using API.Hubs;
 using Asp.Versioning;
 using Core.DTOs;
 using Core.Entities;
@@ -16,8 +15,7 @@ namespace API.Controllers;
 [ApiController]
 public class OrdersController(
     IOrderService orderService,
-    ICartService cartService,
-    IOrderNotificationService notificationService) : ControllerBase
+    ICartService cartService) : ControllerBase
 {
     [HttpPost]
     public async Task<ActionResult<Order>> CreateOrder(CreateOrderDto dto)
@@ -47,11 +45,9 @@ public class OrdersController(
 
         if (dto.PaymentMethod.Equals("cod", StringComparison.OrdinalIgnoreCase))
             await orderService.UpdateOrderStatusAsync(order.Id, OrderStatus.Processing);
-        else
-            await orderService.UpdateOrderStatusAsync(order.Id, OrderStatus.PaymentReceived);
 
         await cartService.DeleteCartAsync(cartId);
-        return Ok(order);
+        return Ok(await orderService.GetOrderByIdAsync(order.Id, userId) ?? order);
     }
 
     [HttpGet]
@@ -74,7 +70,6 @@ public class OrdersController(
     {
         var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
         await orderService.CancelOrderAsync(id, userId);
-        await notificationService.NotifyOrderStatusChangedAsync(id, OrderStatus.Cancelled);
         return NoContent();
     }
 }

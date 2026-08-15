@@ -3,10 +3,13 @@ namespace Core.Enums;
 public enum OrderStatus
 {
     Pending,
-    PaymentReceived,
+    PaymentReceived, // displayed as "Paid" in UI
     Processing,
+    Packed,
     Shipped,
+    OutForDelivery,
     Delivered,
     Cancelled,
-    Refunded
+    Refunded,
+    Failed
 }

@@ -1,6 +1,8 @@
 using API.Hubs;
+using API.Services;
 using API.Middleware;
 using Asp.Versioning;
+using Core.Interfaces;
 using Infrastructure;
 using Infrastructure.Data;
 using Microsoft.AspNetCore.Authentication.JwtBearer;

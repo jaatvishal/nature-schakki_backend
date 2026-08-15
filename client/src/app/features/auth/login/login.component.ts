@@ -36,7 +36,7 @@ export class LoginComponent {
       next: () => {
         this.cartService.mergeGuestCartOnLogin().subscribe({
           next: () => {
-            this.snackbar.success('Welcome back!');
+            this.snackbar.success(this.authService.isAdmin() ? 'Welcome back, Admin!' : 'Welcome back!');
             const returnUrl = this.route.snapshot.queryParams['returnUrl'];
             this.router.navigateByUrl(returnUrl || this.authService.getPostLoginRoute());
           },

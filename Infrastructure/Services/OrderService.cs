@@ -1,3 +1,4 @@
+using Core;
 using Core.Entities;
 using Core.Enums;
 using Core.Exceptions;
@@ -11,7 +12,9 @@ namespace Infrastructure.Services;
 public class OrderService(
     StoreContext context,
     IInventoryService inventoryService,
-    ICouponService couponService) : IOrderService
+    ICouponService couponService,
+    INotificationService notificationService,
+    IOrderNotificationService orderNotificationService) : IOrderService
 {
     public async Task<Order> CreateOrderAsync(
         int userId, string buyerEmail, Address shipToAddress,
@@ -78,9 +81,7 @@ public class OrderService(
         await context.SaveChangesAsync();
 
         foreach (var item in items)
-        {
             await inventoryService.ReserveStockAsync(item.ProductId, item.Quantity);
-        }
 
         if (coupon != null)
             await couponService.RecordUsageAsync(coupon.Id, userId, order.Id);
@@ -90,7 +91,6 @@ public class OrderService(
 
     public async Task<Order?> GetOrderByIdAsync(int orderId, int userId)
     {
-        var spec = new OrderWithItemsSpecification(orderId, userId);
         return await context.Orders
             .Include(x => x.OrderItems)
             .Include(x => x.DeliveryMethod)
@@ -115,6 +115,12 @@ public class OrderService(
             .FirstOrDefaultAsync(x => x.Id == orderId)
             ?? throw new NotFoundException($"Order {orderId} not found.");
 
+        if (order.Status == status)
+            return order;
+
+        if (!OrderStatusRules.CanTransition(order.Status, status))
+            throw new BadRequestException($"Cannot transition order from {order.Status} to {status}.");
+
         var previousStatus = order.Status;
         order.Status = status;
         order.UpdatedAt = DateTime.UtcNow;
@@ -125,7 +131,7 @@ public class OrderService(
                 await inventoryService.ReleaseStockAsync(item.ProductId, item.Quantity);
         }
 
-        if (status == OrderStatus.PaymentReceived && previousStatus == OrderStatus.Pending)
+        if (OrderStatusRules.ConfirmsPayment(previousStatus, status))
         {
             foreach (var item in order.OrderItems)
             {
@@ -134,10 +140,15 @@ public class OrderService(
                 if (inventory != null)
                     inventory.ReservedQuantity = Math.Max(0, inventory.ReservedQuantity - item.Quantity);
             }
-            await context.SaveChangesAsync();
         }
 
         await context.SaveChangesAsync();
+
+        var title = OrderStatusRules.NotificationTitle(status);
+        var message = OrderStatusRules.NotificationMessage(status, order.Id);
+        await notificationService.CreateAsync(order.UserId, title, message, $"/account/orders/{order.Id}");
+        await orderNotificationService.NotifyOrderStatusChangedAsync(order.UserId, order.Id, status, message);
+
         return order;
     }
 
@@ -148,7 +159,7 @@ public class OrderService(
             .FirstOrDefaultAsync(x => x.Id == orderId && x.UserId == userId)
             ?? throw new NotFoundException($"Order {orderId} not found.");
 
-        if (order.Status is OrderStatus.Shipped or OrderStatus.Delivered)
+        if (order.Status is OrderStatus.Shipped or OrderStatus.OutForDelivery or OrderStatus.Delivered)
             throw new BadRequestException("Cannot cancel a shipped or delivered order.");
 
         await UpdateOrderStatusAsync(orderId, OrderStatus.Cancelled);

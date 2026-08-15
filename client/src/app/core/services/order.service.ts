@@ -37,6 +37,10 @@ export class OrderService {
     return this.http.get<DeliveryMethod[]>(`${environment.apiUrl}/v1/deliverymethods`);
   }
 
+  getAdminDashboard() {
+    return this.http.get<AdminDashboard>(`${environment.apiUrl}/v1/admin/dashboard`);
+  }
+
   getAdminOrders() {
     return this.http.get<AdminOrder[]>(`${environment.apiUrl}/v1/admin/orders`);
   }
@@ -49,6 +53,18 @@ export class OrderService {
     return this.http.get<AdminPayment[]>(`${environment.apiUrl}/v1/admin/payments`);
   }
 }
+
+export type AdminDashboard = {
+  userCount: number;
+  productCount: number;
+  orderCount: number;
+  revenue: number;
+  successfulPayments: number;
+  failedPayments: number;
+  pendingPayments: number;
+  lowStockCount: number;
+  recentActivities: { type: string; description: string; occurredAt: string }[];
+};
 
 export type AdminOrder = Order & { paymentStatus?: string };
 export type AdminPayment = {

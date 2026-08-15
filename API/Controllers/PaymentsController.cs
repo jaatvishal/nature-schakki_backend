@@ -25,7 +25,8 @@ public class PaymentsController(
     [HttpPost("create-intent/{orderId:int}")]
     public async Task<ActionResult<PaymentIntentDto>> CreatePaymentIntent(int orderId)
     {
-        var order = await context.Orders.FindAsync(orderId);
+        var userId = int.Parse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)!.Value);
+        var order = await context.Orders.FirstOrDefaultAsync(x => x.Id == orderId && x.UserId == userId);
         if (order == null) return NotFound();
 
         var paymentIntentId = await paymentService.CreatePaymentIntentAsync(order.Total);
@@ -59,22 +60,13 @@ public class PaymentsController(
             {
                 var paymentIntent = stripeEvent.Data.Object as PaymentIntent;
                 if (paymentIntent != null)
-                {
-                    var order = await context.Orders
-                        .FirstOrDefaultAsync(x => x.PaymentIntentId == paymentIntent.Id);
-                    if (order != null)
-                    {
-                        await orderService.UpdateOrderStatusAsync(order.Id, OrderStatus.PaymentReceived);
-                        context.Payments.Add(new Payment
-                        {
-                            OrderId = order.Id,
-                            PaymentIntentId = paymentIntent.Id,
-                            Amount = order.Total,
-                            Status = PaymentStatus.Succeeded
-                        });
-                        await context.SaveChangesAsync();
-                    }
-                }
+                    await ProcessSuccessfulPaymentAsync(paymentIntent.Id);
+            }
+            else if (stripeEvent.Type == EventTypes.PaymentIntentPaymentFailed)
+            {
+                var paymentIntent = stripeEvent.Data.Object as PaymentIntent;
+                if (paymentIntent != null)
+                    await ProcessFailedPaymentAsync(paymentIntent.Id);
             }
         }
         catch (StripeException ex)
@@ -84,5 +76,57 @@ public class PaymentsController(
         }
 
         return Ok();
+    }
+
+    private async Task ProcessSuccessfulPaymentAsync(string paymentIntentId)
+    {
+        if (await context.Payments.AnyAsync(p => p.PaymentIntentId == paymentIntentId && p.Status == PaymentStatus.Succeeded))
+            return;
+
+        var order = await context.Orders.FirstOrDefaultAsync(x => x.PaymentIntentId == paymentIntentId);
+        if (order == null) return;
+
+        if (order.Status == OrderStatus.Pending)
+            await orderService.UpdateOrderStatusAsync(order.Id, OrderStatus.PaymentReceived);
+
+        var refreshed = await context.Orders.AsNoTracking().FirstOrDefaultAsync(x => x.Id == order.Id);
+        if (refreshed?.Status == OrderStatus.PaymentReceived)
+            await orderService.UpdateOrderStatusAsync(order.Id, OrderStatus.Processing);
+
+        if (!await context.Payments.AnyAsync(p => p.PaymentIntentId == paymentIntentId))
+        {
+            context.Payments.Add(new Payment
+            {
+                OrderId = order.Id,
+                PaymentIntentId = paymentIntentId,
+                Amount = order.Total,
+                Status = PaymentStatus.Succeeded
+            });
+            await context.SaveChangesAsync();
+        }
+    }
+
+    private async Task ProcessFailedPaymentAsync(string paymentIntentId)
+    {
+        if (await context.Payments.AnyAsync(p => p.PaymentIntentId == paymentIntentId && p.Status == PaymentStatus.Failed))
+            return;
+
+        var order = await context.Orders.FirstOrDefaultAsync(x => x.PaymentIntentId == paymentIntentId);
+        if (order == null) return;
+
+        if (order.Status == OrderStatus.Pending)
+            await orderService.UpdateOrderStatusAsync(order.Id, OrderStatus.Failed);
+
+        if (!await context.Payments.AnyAsync(p => p.PaymentIntentId == paymentIntentId))
+        {
+            context.Payments.Add(new Payment
+            {
+                OrderId = order.Id,
+                PaymentIntentId = paymentIntentId,
+                Amount = order.Total,
+                Status = PaymentStatus.Failed
+            });
+            await context.SaveChangesAsync();
+        }
     }
 }

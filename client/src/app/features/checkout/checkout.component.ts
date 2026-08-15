@@ -12,6 +12,7 @@ import { CartService } from '../../core/services/cart.service';
 import { OrderService } from '../../core/services/order.service';
 import { SnackbarService } from '../../core/services/snackbar.service';
 import { DeliveryMethod, Order } from '../../shared/models/order';
+import { ORDER_STATUS_STEPS, orderStatusLabel } from '../../shared/constants/order-status';
 
 @Component({
   selector: 'app-checkout',
@@ -31,7 +32,7 @@ export class CheckoutComponent implements OnInit {
   placing = signal(false);
   placedOrder = signal<Order | null>(null);
   deliveryMethods = signal<DeliveryMethod[]>([]);
-  statusSteps = ['Pending', 'PaymentReceived', 'Processing', 'Shipped', 'Delivered'];
+  statusSteps = ORDER_STATUS_STEPS;
 
   addressForm = this.fb.group({
     firstName: ['', [Validators.required, Validators.minLength(2)]],
@@ -93,6 +94,11 @@ export class CheckoutComponent implements OnInit {
   }
 
   isStatusActive(status: string, step: string) {
-    return this.statusSteps.indexOf(status) >= this.statusSteps.indexOf(step);
+    const steps = this.statusSteps as readonly string[];
+    return steps.indexOf(status) >= steps.indexOf(step);
+  }
+
+  label(status: string) {
+    return orderStatusLabel(status);
   }
 }

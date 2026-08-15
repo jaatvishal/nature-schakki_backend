@@ -55,6 +55,8 @@ public static class InfrastructureServiceRegistration
         services.AddScoped<IWishlistService, WishlistService>();
         services.AddScoped<IReviewService, ReviewService>();
         services.AddScoped<IAuditService, AuditService>();
+        services.AddScoped<INotificationService, NotificationService>();
+        services.AddScoped<IOrderNotificationService, NoOpOrderNotificationService>();
         services.AddScoped<IPaymentService, StripePaymentService>();
         services.AddScoped<IEmailService, LogEmailService>();
         services.AddScoped<IFileStorageService, LocalFileStorage>();

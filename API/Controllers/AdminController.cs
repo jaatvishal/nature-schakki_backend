@@ -1,4 +1,5 @@
 using Asp.Versioning;
+using Core.DTOs;
 using Core.Entities;
 using Core.Enums;
 using Core.Interfaces;
@@ -26,6 +27,51 @@ public class AdminController(
     IOrderService orderService,
     IReviewService reviewService) : ControllerBase
 {
+    [HttpGet("dashboard")]
+    public async Task<ActionResult<AdminDashboardDto>> GetDashboard()
+    {
+        const int lowStockThreshold = 10;
+
+        var payments = await context.Payments.AsNoTracking().ToListAsync();
+        var recentOrders = await context.Orders.AsNoTracking()
+            .OrderByDescending(x => x.OrderDate)
+            .Take(5)
+            .Select(o => new { o.Id, o.BuyerEmail, o.Status, o.Total, o.OrderDate })
+            .ToListAsync();
+
+        var lowStock = await context.Inventories.AsNoTracking()
+            .CountAsync(x => x.QuantityOnHand - x.ReservedQuantity <= lowStockThreshold);
+
+        var activities = recentOrders.Select(o => new AdminActivityDto
+        {
+            Type = "Order",
+            Description = $"Order #{o.Id} ({o.BuyerEmail}) — {o.Status} — ₹{o.Total:N2}",
+            OccurredAt = o.OrderDate
+        }).ToList();
+
+        activities.AddRange(payments.OrderByDescending(p => p.CreatedAt).Take(5).Select(p => new AdminActivityDto
+        {
+            Type = "Payment",
+            Description = $"Payment for order #{p.OrderId} — {p.Status} — ₹{p.Amount:N2}",
+            OccurredAt = p.CreatedAt
+        }));
+
+        return Ok(new AdminDashboardDto
+        {
+            UserCount = await userManager.Users.CountAsync(),
+            ProductCount = await context.Products.CountAsync(),
+            OrderCount = await context.Orders.CountAsync(),
+            Revenue = await context.Payments.AsNoTracking()
+                .Where(p => p.Status == PaymentStatus.Succeeded)
+                .SumAsync(p => p.Amount),
+            SuccessfulPayments = payments.Count(p => p.Status == PaymentStatus.Succeeded),
+            FailedPayments = payments.Count(p => p.Status == PaymentStatus.Failed),
+            PendingPayments = payments.Count(p => p.Status == PaymentStatus.Pending),
+            LowStockCount = lowStock,
+            RecentActivities = activities.OrderByDescending(a => a.OccurredAt).Take(8).ToList()
+        });
+    }
+
     [HttpGet("products")]
     public async Task<IActionResult> GetProducts() =>
         Ok(await context.Products.AsNoTracking().ToListAsync());

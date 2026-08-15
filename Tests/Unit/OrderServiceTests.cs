@@ -17,7 +17,9 @@ public class OrderServiceTests
         var context = new StoreContext(options);
         var inventory = new InventoryService(context);
         var coupon = new CouponService(context);
-        var orderService = new OrderService(context, inventory, coupon);
+        var notification = new NotificationService(context);
+        var orderNotification = new NoOpOrderNotificationService();
+        var orderService = new OrderService(context, inventory, coupon, notification, orderNotification);
         return (context, orderService);
     }
 
@@ -72,6 +74,33 @@ public class OrderServiceTests
         var inventory = await context.Inventories.FirstAsync(x => x.ProductId == product.Id);
         Assert.Equal(0, inventory.ReservedQuantity);
         Assert.Equal(OrderStatus.Cancelled, (await context.Orders.FindAsync(order.Id))!.Status);
+    }
+
+    [Fact]
+    public async Task UpdateOrderStatusAsync_InvalidTransition_Throws()
+    {
+        var (context, service) = CreateFixture();
+        context.DeliveryMethods.Add(new DeliveryMethod { Id = 1, ShortName = "STD", Description = "Standard", Price = 5, DeliveryTimeDays = 3 });
+        var order = new Order
+        {
+            UserId = 1,
+            BuyerEmail = "test@test.com",
+            ShipToAddress = new Address
+            {
+                FirstName = "A", LastName = "B", Street = "1 St", City = "C", State = "S", ZipCode = "1", Country = "US", UserId = 1
+            },
+            DeliveryMethodId = 1,
+            Subtotal = 20,
+            DeliveryCost = 5,
+            Total = 25,
+            Status = OrderStatus.Pending,
+            OrderItems = []
+        };
+        context.Orders.Add(order);
+        await context.SaveChangesAsync();
+
+        await Assert.ThrowsAsync<BadRequestException>(() =>
+            service.UpdateOrderStatusAsync(order.Id, OrderStatus.Delivered));
     }
 
     [Fact]

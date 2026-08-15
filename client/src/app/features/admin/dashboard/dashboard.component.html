@@ -1,20 +1,72 @@
-<div class="max-w-4xl mx-auto py-8 px-4">
-  <h1 class="text-2xl font-bold mb-6">Admin Dashboard</h1>
-  <div class="grid grid-cols-1 sm:grid-cols-3 gap-6">
-    <mat-card><mat-card-content class="p-6 text-center">
-      <p class="text-4xl font-bold text-blue-600">{{ productCount() }}</p>
-      <p class="text-gray-500 mt-2">Products</p>
-      <a mat-stroked-button routerLink="/admin/products" class="mt-4">Manage</a>
-    </mat-card-content></mat-card>
-    <mat-card><mat-card-content class="p-6 text-center">
-      <p class="text-4xl font-bold text-green-600">{{ orderCount() }}</p>
-      <p class="text-gray-500 mt-2">Orders</p>
-      <a mat-stroked-button routerLink="/admin/orders" class="mt-4">Manage</a>
-    </mat-card-content></mat-card>
-    <mat-card><mat-card-content class="p-6 text-center">
-      <p class="text-4xl font-bold text-purple-600">$</p>
-      <p class="text-gray-500 mt-2">Payments</p>
-      <a mat-stroked-button routerLink="/admin/payments" class="mt-4">View</a>
-    </mat-card-content></mat-card>
+<div class="max-w-6xl mx-auto py-8 px-4">
+  <div class="mb-8">
+    <h1 class="text-3xl font-bold">Welcome Back, {{ adminName() }}!</h1>
+    <p class="text-gray-500 mt-1">Manage your store from the admin dashboard.</p>
   </div>
+
+  @if (dashboard(); as d) {
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+      <mat-card><mat-card-content class="p-4 text-center">
+        <p class="text-3xl font-bold text-blue-600">{{ d.userCount }}</p>
+        <p class="text-sm text-gray-500">Users</p>
+      </mat-card-content></mat-card>
+      <mat-card><mat-card-content class="p-4 text-center">
+        <p class="text-3xl font-bold text-indigo-600">{{ d.productCount }}</p>
+        <p class="text-sm text-gray-500">Products</p>
+      </mat-card-content></mat-card>
+      <mat-card><mat-card-content class="p-4 text-center">
+        <p class="text-3xl font-bold text-green-600">{{ d.orderCount }}</p>
+        <p class="text-sm text-gray-500">Orders</p>
+      </mat-card-content></mat-card>
+      <mat-card><mat-card-content class="p-4 text-center">
+        <p class="text-3xl font-bold text-amber-600">{{ d.revenue | currency: 'INR' }}</p>
+        <p class="text-sm text-gray-500">Revenue</p>
+      </mat-card-content></mat-card>
+    </div>
+
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+      <mat-card><mat-card-content class="p-4 text-center">
+        <p class="text-2xl font-bold text-green-700">{{ d.successfulPayments }}</p>
+        <p class="text-sm text-gray-500">Successful Payments</p>
+      </mat-card-content></mat-card>
+      <mat-card><mat-card-content class="p-4 text-center">
+        <p class="text-2xl font-bold text-red-600">{{ d.failedPayments }}</p>
+        <p class="text-sm text-gray-500">Failed Payments</p>
+      </mat-card-content></mat-card>
+      <mat-card><mat-card-content class="p-4 text-center">
+        <p class="text-2xl font-bold text-yellow-600">{{ d.pendingPayments }}</p>
+        <p class="text-sm text-gray-500">Pending Payments</p>
+      </mat-card-content></mat-card>
+      <mat-card><mat-card-content class="p-4 text-center">
+        <p class="text-2xl font-bold text-orange-600">{{ d.lowStockCount }}</p>
+        <p class="text-sm text-gray-500">Low Stock Items</p>
+      </mat-card-content></mat-card>
+    </div>
+
+    <div class="flex flex-wrap gap-3 mb-8">
+      <a mat-stroked-button routerLink="/admin/products">Products</a>
+      <a mat-stroked-button routerLink="/admin/orders">Orders</a>
+      <a mat-stroked-button routerLink="/admin/payments">Payments</a>
+    </div>
+
+    <mat-card>
+      <mat-card-content class="p-4">
+        <h2 class="font-semibold mb-4">Recent Activity</h2>
+        @if (d.recentActivities.length) {
+          <ul class="space-y-2 text-sm">
+            @for (activity of d.recentActivities; track activity.description) {
+              <li class="flex justify-between border-b pb-2">
+                <span><span class="font-medium">{{ activity.type }}:</span> {{ activity.description }}</span>
+                <span class="text-gray-400 shrink-0 ml-2">{{ activity.occurredAt | date: 'short' }}</span>
+              </li>
+            }
+          </ul>
+        } @else {
+          <p class="text-gray-500">No recent activity</p>
+        }
+      </mat-card-content>
+    </mat-card>
+  } @else {
+    <p class="text-gray-500">Loading dashboard...</p>
+  }
 </div>

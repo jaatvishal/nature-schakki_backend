@@ -92,11 +92,11 @@
             <div class="text-center flex-1">
               <div class="w-8 h-8 mx-auto rounded-full text-xs flex items-center justify-center"
                 [class]="isStatusActive(o.status, s) ? 'bg-amber-600 text-white' : 'bg-gray-200'">{{ i+1 }}</div>
-              <span class="text-xs block mt-1">{{ s }}</span>
+              <span class="text-xs block mt-1">{{ label(s) }}</span>
             </div>
           }
         </div>
-        <p class="font-medium mt-4">Status: <span class="text-amber-700">{{ o.status }}</span></p>
+        <p class="font-medium mt-4">Status: <span class="text-amber-700">{{ label(o.status) }}</span></p>
         <a mat-flat-button color="primary" [routerLink]="['/account/orders', o.id]" class="mt-4">View Full Details</a>
       </div>
     }

@@ -6,8 +6,7 @@ import { MatFormField } from '@angular/material/form-field';
 import { MatSelect, MatOption } from '@angular/material/select';
 import { AdminOrder, OrderService } from '../../../core/services/order.service';
 import { SnackbarService } from '../../../core/services/snackbar.service';
-
-const STATUSES = ['Pending', 'PaymentReceived', 'Processing', 'Shipped', 'Delivered', 'Cancelled', 'Refunded'];
+import { ADMIN_ORDER_STATUSES, orderStatusLabel } from '../../../shared/constants/order-status';
 
 @Component({
   selector: 'app-admin-orders',
@@ -19,7 +18,7 @@ export class AdminOrdersComponent implements OnInit {
   private orderService = inject(OrderService);
   private snackbar = inject(SnackbarService);
   orders = signal<AdminOrder[]>([]);
-  statuses = STATUSES;
+  statuses = ADMIN_ORDER_STATUSES;
 
   ngOnInit(): void {
     this.load();
@@ -40,5 +39,9 @@ export class AdminOrdersComponent implements OnInit {
       },
       error: () => this.snackbar.error('Failed to update status'),
     });
+  }
+
+  label(status: string): string {
+    return orderStatusLabel(status);
   }
 }

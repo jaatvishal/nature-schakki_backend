@@ -15,7 +15,7 @@
             [class]="isActive(o.status, step) ? 'bg-amber-600 text-white' : 'bg-gray-200 text-gray-500'">
             @if (isActive(o.status, step)) { <mat-icon class="!text-sm !w-4 !h-4">check</mat-icon> } @else { {{ i + 1 }} }
           </div>
-          <span class="text-xs mt-1 text-center" [class.font-semibold]="o.status === step">{{ step }}</span>
+          <span class="text-xs mt-1 text-center" [class.font-semibold]="o.status === step">{{ label(step) }}</span>
         </div>
       }
       <div class="absolute top-4 left-0 right-0 h-0.5 bg-gray-200 -z-0"></div>
@@ -30,7 +30,7 @@
       </div>
       <div class="border rounded-lg p-4">
         <h2 class="font-semibold mb-2">Summary</h2>
-        <p>Status: <span class="font-medium text-amber-700">{{ o.status }}</span></p>
+        <p>Status: <span class="font-medium text-amber-700">{{ label(o.status) }}</span></p>
         <p>Delivery: {{ o.deliveryMethod?.shortName }}</p>
         <p class="text-xl font-bold mt-2">{{ o.total | currency: 'INR' }}</p>
       </div>

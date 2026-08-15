@@ -63,6 +63,8 @@ Cart stored in Memory or Redis (`CacheProvider`). Not in SQL.
 4. Calculate subtotal, delivery, discount, total
 5. Persist order with `OrderStatus.Pending`
 
+**Order lifecycle:** `Pending` → `PaymentReceived` (Paid) → `Processing` → `Packed` → `Shipped` → `OutForDelivery` → `Delivered`, plus `Cancelled`, `Refunded`, `Failed`. COD skips to `Processing`; Stripe webhook handles payment idempotently. Admin updates delivery status; customers receive in-app + SignalR notifications.
+
 **Frontend:**
 
 - `client/src/app/features/checkout/checkout.component.ts`
@@ -91,19 +93,22 @@ Mock mode available for development without Stripe keys.
 
 | Area | Endpoints |
 |------|-----------|
+| Dashboard | GET `/api/v1/admin/dashboard` — users, products, orders, revenue, payment counts, low stock, recent activity |
 | Products | GET/POST/PUT/DELETE `/api/v1/admin/products` |
 | Orders | GET orders, PUT status |
+| Payments | GET `/api/v1/admin/payments` |
 | Users | GET `/api/v1/admin/users` |
 | Coupons | GET/POST `/api/v1/admin/coupons` |
 | Reviews | GET pending, PUT moderate |
 
 **Frontend:** `client/src/app/features/admin/`
 
-- `dashboard.component.ts` — overview
+- `dashboard.component.ts` — Welcome Back admin overview with summary cards
 - `products.component.ts` — product management
-- `orders.component.ts` — order status updates
+- `orders.component.ts` — order/delivery status updates
+- `payments.component.ts` — payment history
 
-**Access:** Login as `admin@natureschakki.com` / `Admin@123!`
+**Access:** Login as `admin@natureschakki.com` / `Admin@123!` → redirects to `/admin` with welcome message
 
 ---
 
