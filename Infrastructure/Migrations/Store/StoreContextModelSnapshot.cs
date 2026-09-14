@@ -401,7 +401,7 @@ namespace Infrastructure.Migrations.Store
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
-                    b.Property<int>("ChangedByUserId")
+                    b.Property<int?>("ChangedByUserId")
                         .HasColumnType("int");
 
                     b.Property<DateTime>("CreatedAt")

@@ -440,12 +440,7 @@ public class AdminController(
         var current = await context.Orders.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id);
         if (current == null) return NotFound();
         if (current.Status == dto.Status) return NoContent();
-        await orderService.UpdateOrderStatusAsync(id, dto.Status);
-        context.OrderStatusHistories.Add(new OrderStatusHistory
-        {
-            OrderId = id, FromStatus = current.Status, ToStatus = dto.Status, ChangedByUserId = AdminId
-        });
-        await context.SaveChangesAsync();
+        await orderService.UpdateOrderStatusAsync(id, dto.Status, AdminId);
         await auditService.LogAsync(AdminId, "Change order status", "Order", id,
             $"{current.Status} -> {dto.Status}", IpAddress);
         if (transaction != null) await transaction.CommitAsync();

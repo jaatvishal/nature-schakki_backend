@@ -128,7 +128,10 @@ public class OrderService(
             .ToListAsync();
     }
 
-    public async Task<Order> UpdateOrderStatusAsync(int orderId, OrderStatus status)
+    public async Task<Order> UpdateOrderStatusAsync(
+        int orderId,
+        OrderStatus status,
+        int? changedByUserId = null)
     {
         var order = await context.Orders
             .Include(x => x.OrderItems)
@@ -169,6 +172,13 @@ public class OrderService(
             }
         }
 
+        context.OrderStatusHistories.Add(new OrderStatusHistory
+        {
+            OrderId = order.Id,
+            FromStatus = previousStatus,
+            ToStatus = status,
+            ChangedByUserId = changedByUserId
+        });
         await context.SaveChangesAsync();
         return order;
     }
@@ -183,6 +193,6 @@ public class OrderService(
         if (order.Status is OrderStatus.Shipped or OrderStatus.OutForDelivery or OrderStatus.Delivered)
             throw new BadRequestException("Cannot cancel a shipped or delivered order.");
 
-        await UpdateOrderStatusAsync(orderId, OrderStatus.Cancelled);
+        await UpdateOrderStatusAsync(orderId, OrderStatus.Cancelled, userId);
     }
 }

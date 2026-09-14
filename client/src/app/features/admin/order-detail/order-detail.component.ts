@@ -24,7 +24,7 @@ import { AdminOrder } from '../../../shared/models/admin';
             <p>Delivery: {{ o.deliveryCost | currency:'INR' }}</p><p>Discount: {{ o.discount | currency:'INR' }}</p></section>
         </div>
         <section class="mt-6 border rounded p-4"><h2 class="font-semibold mb-3">Status History</h2>
-          @for (h of o.timeline; track h.changedAt) { <div class="border-b py-2 text-sm">{{ h.fromStatus }} → <strong>{{ h.toStatus }}</strong> by user #{{ h.changedByUserId }} · {{ h.changedAt | date:'medium' }}</div>
+          @for (h of o.timeline; track h.changedAt) { <div class="border-b py-2 text-sm">{{ h.fromStatus }} → <strong>{{ h.toStatus }}</strong> by {{ h.changedByUserId ? 'user #' + h.changedByUserId : 'system' }} · {{ h.changedAt | date:'medium' }}</div>
           } @empty { <p class="text-gray-500">No administrative status changes recorded yet.</p> }
         </section>
       }

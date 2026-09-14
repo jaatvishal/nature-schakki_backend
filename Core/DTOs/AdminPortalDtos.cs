@@ -107,7 +107,7 @@ public class OrderStatusHistoryDto
 {
     public string FromStatus { get; set; } = string.Empty;
     public string ToStatus { get; set; } = string.Empty;
-    public int ChangedByUserId { get; set; }
+    public int? ChangedByUserId { get; set; }
     public DateTime ChangedAt { get; set; }
 }
 

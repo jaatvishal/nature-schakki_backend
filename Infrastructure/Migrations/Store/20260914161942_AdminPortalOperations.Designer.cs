@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Infrastructure.Migrations.Store
 {
     [DbContext(typeof(StoreContext))]
-    [Migration("20260914161248_AdminPortalOperations")]
+    [Migration("20260914161942_AdminPortalOperations")]
     partial class AdminPortalOperations
     {
         /// <inheritdoc />
@@ -404,7 +404,7 @@ namespace Infrastructure.Migrations.Store
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
-                    b.Property<int>("ChangedByUserId")
+                    b.Property<int?>("ChangedByUserId")
                         .HasColumnType("int");
 
                     b.Property<DateTime>("CreatedAt")

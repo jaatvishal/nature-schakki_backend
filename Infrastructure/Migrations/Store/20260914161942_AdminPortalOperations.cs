@@ -91,7 +91,7 @@ namespace Infrastructure.Migrations.Store
                     OrderId = table.Column<int>(type: "int", nullable: false),
                     FromStatus = table.Column<int>(type: "int", nullable: false),
                     ToStatus = table.Column<int>(type: "int", nullable: false),
-                    ChangedByUserId = table.Column<int>(type: "int", nullable: false),
+                    ChangedByUserId = table.Column<int>(type: "int", nullable: true),
                     CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
                     UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: false)
                 },

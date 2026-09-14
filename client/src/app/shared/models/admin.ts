@@ -60,7 +60,7 @@ export type AdminOrder = {
   timeline: {
     fromStatus: string;
     toStatus: string;
-    changedByUserId: number;
+    changedByUserId?: number;
     changedAt: string;
   }[];
 };

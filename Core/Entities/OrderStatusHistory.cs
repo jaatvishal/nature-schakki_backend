@@ -8,5 +8,5 @@ public class OrderStatusHistory : BaseEntity
     public Order? Order { get; set; }
     public OrderStatus FromStatus { get; set; }
     public OrderStatus ToStatus { get; set; }
-    public int ChangedByUserId { get; set; }
+    public int? ChangedByUserId { get; set; }
 }
