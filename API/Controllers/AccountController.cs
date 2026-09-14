@@ -22,15 +22,23 @@ public class AccountController(
     SignInManager<AppUser> signInManager,
     ITokenService tokenService,
     IEmailService emailService,
+    IEmailVerificationService emailVerificationService,
     AppIdentityDbContext identityContext,
     IConfiguration config) : ControllerBase
 {
     [HttpPost("register")]
     [AllowAnonymous]
-    public async Task<ActionResult<UserDto>> Register(RegisterDto dto)
+    public async Task<ActionResult<RegisterResultDto>> Register(
+        RegisterDto dto,
+        CancellationToken cancellationToken)
     {
-        if (await userManager.FindByEmailAsync(dto.Email) != null)
-            return BadRequest("Email is already registered.");
+        var existingUser = await userManager.FindByEmailAsync(dto.Email);
+        if (existingUser != null)
+        {
+            return Conflict(existingUser.EmailConfirmed
+                ? "Email is already registered."
+                : "Registration is pending email verification. Request a new code.");
+        }
 
         var displayName = !string.IsNullOrWhiteSpace(dto.DisplayName)
             ? dto.DisplayName
@@ -41,15 +49,71 @@ public class AccountController(
             UserName = dto.Email,
             Email = dto.Email,
             DisplayName = displayName,
-            EmailConfirmed = true
+            EmailConfirmed = false
         };
 
         var result = await userManager.CreateAsync(user, dto.Password);
         if (!result.Succeeded)
-            return BadRequest(result.Errors.Select(e => e.Description));
+            return ValidationProblem(new ValidationProblemDetails(
+                result.Errors.GroupBy(x => x.Code)
+                    .ToDictionary(x => x.Key, x => x.Select(e => e.Description).ToArray())));
 
-        await userManager.AddToRoleAsync(user, "Customer");
-        return await CreateUserDto(user);
+        var roleResult = await userManager.AddToRoleAsync(user, "Customer");
+        if (!roleResult.Succeeded)
+        {
+            await userManager.DeleteAsync(user);
+            return Problem(statusCode: 500, title: "Registration failed.");
+        }
+
+        await emailVerificationService.SendOtpAsync(
+            user.Id, user.Email!, false, cancellationToken);
+
+        return Accepted(new RegisterResultDto
+        {
+            Email = user.Email!,
+            Message = "Registration successful. Check your email for the verification code."
+        });
+    }
+
+    [HttpPost("verify-email")]
+    [AllowAnonymous]
+    public async Task<ActionResult<UserDto>> VerifyEmail(
+        VerifyEmailOtpDto dto,
+        CancellationToken cancellationToken)
+    {
+        var user = await userManager.FindByEmailAsync(dto.Email);
+        if (user == null)
+            return BadRequest("Verification code is invalid or expired.");
+        if (user.EmailConfirmed)
+            return Conflict("Email is already verified.");
+
+        await emailVerificationService.VerifyOtpAsync(user.Id, dto.Otp, cancellationToken);
+        return Ok(await CreateUserDto(user));
+    }
+
+    [HttpPost("resend-verification")]
+    [AllowAnonymous]
+    public async Task<ActionResult<RegisterResultDto>> ResendVerification(
+        ResendEmailOtpDto dto,
+        CancellationToken cancellationToken)
+    {
+        var user = await userManager.FindByEmailAsync(dto.Email);
+        if (user == null)
+            return Ok(new RegisterResultDto
+            {
+                Email = dto.Email,
+                Message = "If the account is awaiting verification, a new code has been sent."
+            });
+        if (user.EmailConfirmed)
+            return Conflict("Email is already verified.");
+
+        await emailVerificationService.SendOtpAsync(
+            user.Id, user.Email!, true, cancellationToken);
+        return Ok(new RegisterResultDto
+        {
+            Email = user.Email!,
+            Message = "A new verification code has been sent."
+        });
     }
 
     [HttpPost("login")]
@@ -61,6 +125,7 @@ public class AccountController(
 
         var result = await signInManager.CheckPasswordSignInAsync(user, dto.Password, false);
         if (!result.Succeeded) return Unauthorized("Invalid credentials.");
+        if (!user.EmailConfirmed) return Unauthorized("Email verification is required.");
 
         return await CreateUserDto(user);
     }

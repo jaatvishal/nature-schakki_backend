@@ -47,6 +47,10 @@ export class CartService {
     return this.http.delete(this.baseUrl, { params: { id } }).pipe(tap(() => this.cartSignal.set({ id, items: [] })));
   }
 
+  clearLocalCart() {
+    this.cartSignal.set({ id: this.getCartId(), items: [] });
+  }
+
   addItem(product: Product, quantity = 1): Observable<ShoppingCart> {
     if (!this.auth.isLoggedIn()) {
       this.router.navigate(['/auth/login'], { queryParams: { returnUrl: this.router.url } });

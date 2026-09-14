@@ -1,12 +1,18 @@
 using Core.Entities;
+using Core.Interfaces;
 using Infrastructure.Data;
 using Infrastructure.Identity;
+using Infrastructure.Options;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.AspNetCore.TestHost;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.DependencyInjection;
+using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using System.Text.RegularExpressions;
 using System.Text.Json;
 
 namespace Tests.Integration;
@@ -16,7 +22,41 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Testing");
+        builder.ConfigureTestServices(services =>
+        {
+            services.RemoveAll<IEmailService>();
+            services.AddSingleton<TestEmailService>();
+            services.AddSingleton<IEmailService>(x => x.GetRequiredService<TestEmailService>());
+            services.Configure<EmailVerificationOptions>(options =>
+            {
+                options.OtpLifetimeMinutes = 10;
+                options.MaxAttempts = 3;
+                options.ResendCooldownSeconds = 1;
+            });
+        });
     }
+}
+
+public class TestEmailService : IEmailService
+{
+    private readonly Dictionary<string, string> _messages = [];
+    public bool FailSending { get; set; }
+
+    public Task SendEmailAsync(
+        string to,
+        string subject,
+        string body,
+        CancellationToken cancellationToken = default)
+    {
+        if (FailSending)
+            throw new Core.Exceptions.ServiceUnavailableException(
+                "Verification email is temporarily unavailable. Please try again.");
+        _messages[to] = body;
+        return Task.CompletedTask;
+    }
+
+    public string GetOtp(string email) =>
+        Regex.Match(_messages[email], @"\b\d{6}\b").Value;
 }
 
 public class IntegrationTests : IClassFixture<CustomWebApplicationFactory>
@@ -70,6 +110,48 @@ public class IntegrationTests : IClassFixture<CustomWebApplicationFactory>
             });
             await context.SaveChangesAsync();
         }
+
+        if (!context.DeliveryMethods.Any())
+        {
+            context.DeliveryMethods.Add(new DeliveryMethod
+            {
+                ShortName = "Standard Delivery",
+                Description = "Standard local delivery",
+                Price = 0,
+                DeliveryTimeDays = 5
+            });
+            await context.SaveChangesAsync();
+        }
+    }
+
+    private async Task<(int userId, string token)> CreateVerifiedUserAsync()
+    {
+        var email = $"order{Guid.NewGuid():N}@test.com";
+        await _client.PostAsJsonAsync("/api/v1/account/register", new
+        {
+            email,
+            firstName = "Order",
+            lastName = "Customer",
+            password = "Password1!"
+        });
+        var otp = _factory.Services.GetRequiredService<TestEmailService>().GetOtp(email);
+        var response = await _client.PostAsJsonAsync("/api/v1/account/verify-email", new { email, otp });
+        response.EnsureSuccessStatusCode();
+        var json = await response.Content.ReadFromJsonAsync<JsonElement>();
+        return (json.GetProperty("userId").GetInt32(), json.GetProperty("token").GetString()!);
+    }
+
+    private async Task<HttpResponseMessage> SendAuthorizedAsync(
+        HttpMethod method,
+        string url,
+        string token,
+        object? content = null)
+    {
+        using var request = new HttpRequestMessage(method, url);
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        if (content != null)
+            request.Content = JsonContent.Create(content);
+        return await _client.SendAsync(request);
     }
 
     [Fact]
@@ -115,22 +197,273 @@ public class IntegrationTests : IClassFixture<CustomWebApplicationFactory>
     }
 
     [Fact]
-    public async Task Register_ReturnsUserWithToken()
+    public async Task Register_RequiresOtpBeforeLogin_ThenActivatesAccount()
     {
         var email = $"user{Guid.NewGuid():N}@test.com";
         var dto = new Core.DTOs.RegisterDto
         {
             Email = email,
-            DisplayName = "Test User",
+            FirstName = "Test",
+            LastName = "User",
             Password = "Password1!"
         };
         var response = await _client.PostAsJsonAsync("/api/v1/account/register", dto);
 
-        response.EnsureSuccessStatusCode();
-        var json = await response.Content.ReadAsStringAsync();
+        Assert.Equal(System.Net.HttpStatusCode.Accepted, response.StatusCode);
+
+        var unverifiedLogin = await _client.PostAsJsonAsync("/api/v1/account/login", new
+        {
+            email,
+            password = dto.Password
+        });
+        Assert.Equal(System.Net.HttpStatusCode.Unauthorized, unverifiedLogin.StatusCode);
+
+        var emailService = _factory.Services.GetRequiredService<TestEmailService>();
+        var verify = await _client.PostAsJsonAsync("/api/v1/account/verify-email", new
+        {
+            email,
+            otp = emailService.GetOtp(email)
+        });
+        verify.EnsureSuccessStatusCode();
+        var json = await verify.Content.ReadAsStringAsync();
         using var doc = JsonDocument.Parse(json);
-        Assert.True(doc.RootElement.TryGetProperty("token", out var token));
-        Assert.False(string.IsNullOrWhiteSpace(token.GetString()));
+        Assert.False(string.IsNullOrWhiteSpace(doc.RootElement.GetProperty("token").GetString()));
+    }
+
+    [Fact]
+    public async Task VerifyEmail_WithInvalidOrExpiredOtp_IsRejected()
+    {
+        var email = $"invalid{Guid.NewGuid():N}@test.com";
+        await _client.PostAsJsonAsync("/api/v1/account/register", new
+        {
+            email,
+            firstName = "Invalid",
+            lastName = "Otp",
+            password = "Password1!"
+        });
+
+        var invalid = await _client.PostAsJsonAsync("/api/v1/account/verify-email", new
+        {
+            email,
+            otp = "000000"
+        });
+        Assert.Equal(System.Net.HttpStatusCode.BadRequest, invalid.StatusCode);
+
+        using var scope = _factory.Services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<AppIdentityDbContext>();
+        var user = await scope.ServiceProvider.GetRequiredService<UserManager<AppUser>>()
+            .FindByEmailAsync(email);
+        var otp = await context.EmailVerificationOtps.SingleAsync(x => x.UserId == user!.Id);
+        otp.ExpiresAt = DateTime.UtcNow.AddMinutes(-1);
+        await context.SaveChangesAsync();
+
+        var emailService = _factory.Services.GetRequiredService<TestEmailService>();
+        var expired = await _client.PostAsJsonAsync("/api/v1/account/verify-email", new
+        {
+            email,
+            otp = emailService.GetOtp(email)
+        });
+        Assert.Equal(System.Net.HttpStatusCode.BadRequest, expired.StatusCode);
+    }
+
+    [Fact]
+    public async Task VerifyEmail_StopsAfterMaximumFailedAttempts()
+    {
+        var email = $"attempts{Guid.NewGuid():N}@test.com";
+        await _client.PostAsJsonAsync("/api/v1/account/register", new
+        {
+            email,
+            firstName = "Maximum",
+            lastName = "Attempts",
+            password = "Password1!"
+        });
+
+        for (var attempt = 1; attempt <= 3; attempt++)
+        {
+            var response = await _client.PostAsJsonAsync("/api/v1/account/verify-email", new
+            {
+                email,
+                otp = "000000"
+            });
+            Assert.Equal(
+                attempt == 3
+                    ? System.Net.HttpStatusCode.TooManyRequests
+                    : System.Net.HttpStatusCode.BadRequest,
+                response.StatusCode);
+        }
+    }
+
+    [Fact]
+    public async Task ResendVerification_EnforcesCooldown_AndInvalidatesPreviousOtp()
+    {
+        var email = $"resend{Guid.NewGuid():N}@test.com";
+        await _client.PostAsJsonAsync("/api/v1/account/register", new
+        {
+            email,
+            firstName = "Resend",
+            lastName = "Otp",
+            password = "Password1!"
+        });
+        var emailService = _factory.Services.GetRequiredService<TestEmailService>();
+        var oldOtp = emailService.GetOtp(email);
+
+        var limited = await _client.PostAsJsonAsync("/api/v1/account/resend-verification", new { email });
+        Assert.Equal(System.Net.HttpStatusCode.TooManyRequests, limited.StatusCode);
+
+        await Task.Delay(1100);
+        var resent = await _client.PostAsJsonAsync("/api/v1/account/resend-verification", new { email });
+        resent.EnsureSuccessStatusCode();
+
+        var oldCodeAttempt = await _client.PostAsJsonAsync("/api/v1/account/verify-email", new
+        {
+            email,
+            otp = oldOtp
+        });
+        Assert.Equal(System.Net.HttpStatusCode.BadRequest, oldCodeAttempt.StatusCode);
+    }
+
+    [Fact]
+    public async Task Register_WhenEmailProviderFails_ReturnsSafeServiceUnavailableResponse()
+    {
+        var emailService = _factory.Services.GetRequiredService<TestEmailService>();
+        emailService.FailSending = true;
+        try
+        {
+            var response = await _client.PostAsJsonAsync("/api/v1/account/register", new
+            {
+                email = $"emailfail{Guid.NewGuid():N}@test.com",
+                firstName = "Email",
+                lastName = "Failure",
+                password = "Password1!"
+            });
+
+            Assert.Equal(System.Net.HttpStatusCode.ServiceUnavailable, response.StatusCode);
+            var body = await response.Content.ReadAsStringAsync();
+            Assert.DoesNotContain("SMTP", body, StringComparison.OrdinalIgnoreCase);
+        }
+        finally
+        {
+            emailService.FailSending = false;
+        }
+    }
+
+    [Fact]
+    public async Task CodCheckout_UsesDatabasePrice_UpdatesStock_ClearsCart_AndProtectsOrder()
+    {
+        var customer = await CreateVerifiedUserAsync();
+        var otherCustomer = await CreateVerifiedUserAsync();
+
+        using var scope = _factory.Services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<StoreContext>();
+        var product = await context.Products.FirstAsync();
+        var originalStock = product.QuantityInStock;
+        var deliveryId = await context.DeliveryMethods.Select(x => x.Id).FirstAsync();
+
+        await _client.PostAsJsonAsync("/api/v1/cart", new ShoppingCart
+        {
+            Id = customer.userId.ToString(),
+            Items =
+            [
+                new CartItem
+                {
+                    ProductId = product.Id,
+                    ProductName = "Tampered",
+                    Price = 1,
+                    Quantity = 2,
+                    PictureUrl = "/fake.png",
+                    Brand = "Fake",
+                    Type = "Fake"
+                }
+            ]
+        });
+
+        var checkout = await SendAuthorizedAsync(HttpMethod.Post, "/api/v1/orders", customer.token, new
+        {
+            deliveryMethodId = deliveryId,
+            paymentMethod = "COD",
+            shipToAddress = new
+            {
+                firstName = "Order",
+                lastName = "Customer",
+                street = "1 Test Street",
+                city = "Test City",
+                state = "Test State",
+                zipCode = "123456",
+                country = "India"
+            }
+        });
+        checkout.EnsureSuccessStatusCode();
+        var order = await checkout.Content.ReadFromJsonAsync<JsonElement>();
+        var orderId = order.GetProperty("id").GetInt32();
+        Assert.Equal(product.Price, order.GetProperty("orderItems")[0].GetProperty("price").GetDecimal());
+        Assert.Equal("COD", order.GetProperty("paymentMethod").GetString());
+
+        context.ChangeTracker.Clear();
+        Assert.Equal(originalStock - 2, (await context.Products.FindAsync(product.Id))!.QuantityInStock);
+
+        var cart = await _client.GetFromJsonAsync<ShoppingCart>(
+            $"/api/v1/cart?id={customer.userId}");
+        Assert.Empty(cart!.Items);
+
+        var forbiddenOrder = await SendAuthorizedAsync(
+            HttpMethod.Get, $"/api/v1/orders/{orderId}", otherCustomer.token);
+        Assert.Equal(System.Net.HttpStatusCode.NotFound, forbiddenOrder.StatusCode);
+
+        var ownOrders = await SendAuthorizedAsync(HttpMethod.Get, "/api/v1/orders", customer.token);
+        var ownOrderList = await ownOrders.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Contains(ownOrderList.EnumerateArray(), x => x.GetProperty("id").GetInt32() == orderId);
+
+        var otherOrders = await SendAuthorizedAsync(HttpMethod.Get, "/api/v1/orders", otherCustomer.token);
+        var otherOrderList = await otherOrders.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.DoesNotContain(otherOrderList.EnumerateArray(), x => x.GetProperty("id").GetInt32() == orderId);
+    }
+
+    [Fact]
+    public async Task CodCheckout_WithInvalidStock_DoesNotCreatePartialOrder()
+    {
+        var customer = await CreateVerifiedUserAsync();
+        using var scope = _factory.Services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<StoreContext>();
+        var product = await context.Products.FirstAsync();
+        var beforeOrders = await context.Orders.CountAsync();
+        var deliveryId = await context.DeliveryMethods.Select(x => x.Id).FirstAsync();
+
+        await _client.PostAsJsonAsync("/api/v1/cart", new ShoppingCart
+        {
+            Id = customer.userId.ToString(),
+            Items =
+            [
+                new CartItem
+                {
+                    ProductId = product.Id,
+                    ProductName = product.Name,
+                    Price = product.Price,
+                    Quantity = product.QuantityInStock + 1,
+                    PictureUrl = product.PictureUrl,
+                    Brand = product.Brand,
+                    Type = product.Type
+                }
+            ]
+        });
+
+        var response = await SendAuthorizedAsync(HttpMethod.Post, "/api/v1/orders", customer.token, new
+        {
+            deliveryMethodId = deliveryId,
+            paymentMethod = "COD",
+            shipToAddress = new
+            {
+                firstName = "Order",
+                lastName = "Customer",
+                street = "1 Test Street",
+                city = "Test City",
+                state = "Test State",
+                zipCode = "123456",
+                country = "India"
+            }
+        });
+
+        Assert.Equal(System.Net.HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal(beforeOrders, await context.Orders.CountAsync());
     }
 
     [Fact]

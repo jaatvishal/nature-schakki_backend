@@ -3,7 +3,9 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace API.Middleware;
 
-public class ExceptionMiddleware(RequestDelegate next, IHostEnvironment env)
+public class ExceptionMiddleware(
+    RequestDelegate next,
+    ILogger<ExceptionMiddleware> logger)
 {
     public async Task InvokeAsync(HttpContext context)
     {
@@ -13,31 +15,40 @@ public class ExceptionMiddleware(RequestDelegate next, IHostEnvironment env)
         }
         catch (Exception ex)
         {
-            await HandleExceptionAsync(context, ex, env);
+            await HandleExceptionAsync(context, ex);
         }
     }
 
-    private static Task HandleExceptionAsync(HttpContext context, Exception ex, IHostEnvironment env)
+    private Task HandleExceptionAsync(HttpContext context, Exception ex)
     {
         var statusCode = ex switch
         {
             ApiException apiEx => apiEx.StatusCode,
+            Microsoft.EntityFrameworkCore.DbUpdateException => StatusCodes.Status409Conflict,
             _ => StatusCodes.Status500InternalServerError
         };
+
+        if (statusCode >= 500)
+            logger.LogError(ex, "Unhandled request failure for {Method} {Path}",
+                context.Request.Method, context.Request.Path);
+        else
+            logger.LogWarning("Request failed with status {StatusCode} for {Method} {Path}",
+                statusCode, context.Request.Method, context.Request.Path);
 
         var problem = new ProblemDetails
         {
             Status = statusCode,
             Title = GetTitle(statusCode),
-            Detail = ex.Message,
+            Detail = ex is ApiException
+                ? ex.Message
+                : statusCode == StatusCodes.Status409Conflict
+                    ? "The request conflicts with the current data state."
+                    : "An unexpected error occurred.",
             Instance = context.Request.Path
         };
 
         if (ex is ValidationException validationEx)
             problem.Extensions["errors"] = validationEx.Errors;
-
-        if (env.IsDevelopment())
-            problem.Extensions["stackTrace"] = ex.StackTrace;
 
         context.Response.ContentType = "application/problem+json";
         context.Response.StatusCode = statusCode;
@@ -48,8 +59,10 @@ public class ExceptionMiddleware(RequestDelegate next, IHostEnvironment env)
     {
         400 => "Bad Request",
         401 => "Unauthorized",
+        409 => "Conflict",
         404 => "Not Found",
         429 => "Too Many Requests",
+        503 => "Service Unavailable",
         _ => "Internal Server Error"
     };
 }

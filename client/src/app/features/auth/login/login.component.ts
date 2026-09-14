@@ -43,7 +43,9 @@ export class LoginComponent {
         });
       },
       error: (err: HttpErrorResponse) => {
-        const msg = typeof err.error === 'string' ? err.error : err.error?.message || 'Invalid email or password';
+        const msg = typeof err.error === 'string'
+          ? err.error
+          : err.error?.detail || err.error?.message || 'Invalid email or password';
         this.snackbar.error(msg);
       },
     });

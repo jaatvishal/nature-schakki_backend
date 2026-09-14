@@ -148,6 +148,10 @@ try
 
     app.Run();
 }
+catch (HostAbortedException)
+{
+    // Expected when EF Core tooling stops the host after creating services.
+}
 catch (Exception ex)
 {
     Log.Fatal(ex, "Application terminated unexpectedly");

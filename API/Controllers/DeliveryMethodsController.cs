@@ -12,5 +12,16 @@ public class DeliveryMethodsController(StoreContext context) : ControllerBase
 {
     [HttpGet]
     public async Task<IActionResult> GetDeliveryMethods() =>
-        Ok(await context.DeliveryMethods.AsNoTracking().ToListAsync());
+        Ok(await context.DeliveryMethods.AsNoTracking()
+            .OrderBy(x => x.Price)
+            .Take(1)
+            .Select(x => new
+            {
+                x.Id,
+                ShortName = "Standard Delivery",
+                Description = "Standard local delivery",
+                x.DeliveryTimeDays,
+                x.Price
+            })
+            .ToListAsync());
 }

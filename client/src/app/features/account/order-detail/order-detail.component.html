@@ -31,6 +31,7 @@
       <div class="border rounded-lg p-4">
         <h2 class="font-semibold mb-2">Summary</h2>
         <p>Status: <span class="font-medium text-amber-700">{{ label(o.status) }}</span></p>
+        <p>Payment: {{ o.paymentMethod }} ({{ o.paymentStatus }})</p>
         <p>Delivery: {{ o.deliveryMethod?.shortName }}</p>
         <p class="text-xl font-bold mt-2">{{ o.total | currency: 'INR' }}</p>
       </div>

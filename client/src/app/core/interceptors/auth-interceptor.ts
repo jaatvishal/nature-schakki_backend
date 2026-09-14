@@ -3,8 +3,16 @@ import { inject } from '@angular/core';
 import { BehaviorSubject, catchError, filter, switchMap, take, throwError } from 'rxjs';
 import { AuthService } from '../services/auth.service';
 
-const REFRESH_KEY = 'refreshToken';
-const PUBLIC_URLS = ['/product', '/account/login', '/account/register', '/account/forgot-password', '/account/reset-password', '/deliverymethods'];
+const PUBLIC_URLS = [
+  '/product',
+  '/account/login',
+  '/account/register',
+  '/account/verify-email',
+  '/account/resend-verification',
+  '/account/forgot-password',
+  '/account/reset-password',
+  '/deliverymethods',
+];
 
 let isRefreshing = false;
 const refreshTokenSubject = new BehaviorSubject<string | null>(null);
@@ -25,7 +33,7 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
       if (error.status !== 401 || isPublic(req.url) || req.url.includes('/account/refresh')) {
         return throwError(() => error);
       }
-      if (!localStorage.getItem(REFRESH_KEY)) return throwError(() => error);
+      if (!authService.hasRefreshToken()) return throwError(() => error);
       return handle401(authService, authReq, next);
     })
   );

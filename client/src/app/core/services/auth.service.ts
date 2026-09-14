@@ -1,9 +1,9 @@
 import { HttpClient } from '@angular/common/http';
 import { computed, inject, Injectable, signal } from '@angular/core';
 import { Router } from '@angular/router';
-import { tap } from 'rxjs';
+import { catchError, firstValueFrom, of, tap } from 'rxjs';
 import { environment } from '../../../environments/environment';
-import { AuthResponse, LoginRequest, RegisterRequest, User } from '../../shared/models/user';
+import { AuthResponse, LoginRequest, RegisterRequest, RegisterResult, User } from '../../shared/models/user';
 
 const TOKEN_KEY = 'token';
 const REFRESH_KEY = 'refreshToken';
@@ -25,10 +25,19 @@ export class AuthService {
   }
 
   register(request: RegisterRequest) {
-    return this.http.post<AuthResponse>(`${this.baseUrl}/register`, {
+    return this.http.post<RegisterResult>(`${this.baseUrl}/register`, {
       email: request.email, password: request.password,
       firstName: request.firstName, lastName: request.lastName,
-    }).pipe(tap(r => this.setUser(r)));
+    });
+  }
+
+  verifyEmail(email: string, otp: string) {
+    return this.http.post<AuthResponse>(`${this.baseUrl}/verify-email`, { email, otp })
+      .pipe(tap(r => this.setUser(r)));
+  }
+
+  resendVerification(email: string) {
+    return this.http.post<RegisterResult>(`${this.baseUrl}/resend-verification`, { email });
   }
 
   login(request: LoginRequest) {
@@ -37,10 +46,7 @@ export class AuthService {
 
   logout() {
     if (this.getToken()) this.http.post(`${this.baseUrl}/logout`, {}).subscribe({ error: () => {} });
-    localStorage.removeItem(TOKEN_KEY);
-    localStorage.removeItem(REFRESH_KEY);
-    localStorage.removeItem(USER_KEY);
-    this.userSignal.set(null);
+    this.clearSession();
     this.router.navigateByUrl('/auth/login');
   }
 
@@ -61,6 +67,29 @@ export class AuthService {
     return localStorage.getItem(TOKEN_KEY);
   }
 
+  hasRefreshToken(): boolean {
+    return !!localStorage.getItem(REFRESH_KEY);
+  }
+
+  getCurrentUser() {
+    return this.http.get<AuthResponse>(`${this.baseUrl}/current-user`).pipe(
+      tap(response => this.restoreUser(response))
+    );
+  }
+
+  async initialize(): Promise<void> {
+    if (!this.getToken()) {
+      this.clearSession();
+      return;
+    }
+    await firstValueFrom(this.getCurrentUser().pipe(
+      catchError(() => {
+        this.clearSession();
+        return of(null);
+      })
+    ));
+  }
+
   getPostLoginRoute(): string {
     return this.isAdmin() ? '/admin' : '/shop';
   }
@@ -70,6 +99,7 @@ export class AuthService {
     const user: User = {
       id: response.userId,
       email: response.email,
+      displayName: response.displayName,
       firstName: response.firstName || parts[0] || response.email,
       lastName: response.lastName || (parts[1] ?? ''),
       roles: response.roles ?? [],
@@ -80,6 +110,19 @@ export class AuthService {
     if (response.refreshToken) localStorage.setItem(REFRESH_KEY, response.refreshToken);
     localStorage.setItem(USER_KEY, JSON.stringify(user));
     this.userSignal.set(user);
+  }
+
+  private restoreUser(response: AuthResponse) {
+    const token = response.token || this.getToken();
+    if (!token) return;
+    this.setUser({ ...response, token });
+  }
+
+  private clearSession() {
+    localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(REFRESH_KEY);
+    localStorage.removeItem(USER_KEY);
+    this.userSignal.set(null);
   }
 
   private loadUserFromStorage(): User | null {
