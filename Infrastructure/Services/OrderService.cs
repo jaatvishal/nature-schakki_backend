@@ -87,9 +87,17 @@ public class OrderService(
 
         context.Orders.Add(order);
         await context.SaveChangesAsync();
+        context.OrderStatusHistories.Add(new OrderStatusHistory
+        {
+            OrderId = order.Id,
+            FromStatus = OrderStatus.Pending,
+            ToStatus = order.Status,
+            ChangedByUserId = userId
+        });
 
         foreach (var item in items)
-            await inventoryService.AdjustStockAsync(item.ProductId, -item.Quantity);
+            await inventoryService.AdjustStockAsync(
+                item.ProductId, -item.Quantity, "Order deduction", userId, order.Id);
 
         if (coupon != null)
             await couponService.RecordUsageAsync(coupon.Id, userId, order.Id);
@@ -144,7 +152,8 @@ public class OrderService(
                 if (previousStatus == OrderStatus.Pending)
                     await inventoryService.ReleaseStockAsync(item.ProductId, item.Quantity);
                 else
-                    await inventoryService.AdjustStockAsync(item.ProductId, item.Quantity);
+                    await inventoryService.AdjustStockAsync(
+                        item.ProductId, item.Quantity, "Order cancellation reversal", order.UserId, order.Id);
             }
         }
 
@@ -152,7 +161,8 @@ public class OrderService(
         {
             foreach (var item in order.OrderItems)
             {
-                await inventoryService.AdjustStockAsync(item.ProductId, -item.Quantity);
+                await inventoryService.AdjustStockAsync(
+                    item.ProductId, -item.Quantity, "Payment-confirmed order deduction", order.UserId, order.Id);
                 var inventory = await context.Inventories.FirstOrDefaultAsync(x => x.ProductId == item.ProductId);
                 if (inventory != null)
                     inventory.ReservedQuantity = Math.Max(0, inventory.ReservedQuantity - item.Quantity);

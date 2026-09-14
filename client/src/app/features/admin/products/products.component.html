@@ -1,40 +1,39 @@
-<div class="max-w-6xl mx-auto py-8 px-4">
-  <div class="flex items-center justify-between mb-6">
-    <h1 class="text-2xl font-bold">Manage Products</h1>
-    <div class="flex gap-2">
-      <button mat-flat-button color="primary" (click)="showForm.set(!showForm())">
-        {{ showForm() ? 'Cancel' : 'Add Product' }}
-      </button>
-      <a mat-stroked-button routerLink="/admin">Dashboard</a>
-    </div>
-  </div>
+<div class="max-w-7xl mx-auto py-8 px-4">
+  <div class="flex justify-between mb-5"><h1 class="text-2xl font-bold">Products</h1>
+    <div class="flex gap-2"><button mat-flat-button (click)="showForm.set(true)">Add Product</button><a mat-stroked-button routerLink="/admin">Dashboard</a></div></div>
+  <div class="flex gap-2 mb-4"><input [(ngModel)]="search" (keyup.enter)="loadProducts()" placeholder="Search name, SKU, or brand" class="border rounded px-3 py-2 flex-1">
+    <select [(ngModel)]="categoryFilter" (change)="loadProducts()" class="border rounded px-3"><option [ngValue]="0">All categories</option>@for (c of categories(); track c.id) { <option [ngValue]="c.id">{{ c.name }}</option> }</select>
+    <select [(ngModel)]="statusFilter" (change)="loadProducts()" class="border rounded px-3"><option value="">All statuses</option><option value="active">Active</option><option value="inactive">Inactive</option></select>
+    <select [(ngModel)]="sort" (change)="loadProducts()" class="border rounded px-3"><option value="name">Name</option><option value="newest">Newest</option><option value="price">Price</option><option value="stock">Stock</option></select>
+    <button mat-stroked-button (click)="loadProducts()">Search</button></div>
 
   @if (showForm()) {
-    <form [formGroup]="productForm" (ngSubmit)="addProduct()" class="grid sm:grid-cols-2 gap-4 mb-8 p-4 border rounded-lg bg-gray-50">
-      <mat-form-field appearance="outline"><mat-label>Name</mat-label><input matInput formControlName="name" /></mat-form-field>
-      <mat-form-field appearance="outline"><mat-label>Brand</mat-label><input matInput formControlName="brand" /></mat-form-field>
-      <mat-form-field appearance="outline"><mat-label>Type</mat-label><input matInput formControlName="type" /></mat-form-field>
-      <mat-form-field appearance="outline"><mat-label>Price</mat-label><input matInput type="number" formControlName="price" /></mat-form-field>
-      <mat-form-field appearance="outline"><mat-label>Stock</mat-label><input matInput type="number" formControlName="quantityInStock" /></mat-form-field>
-      <mat-form-field appearance="outline"><mat-label>Image URL</mat-label><input matInput formControlName="pictureUrl" /></mat-form-field>
-      <mat-form-field appearance="outline" class="sm:col-span-2"><mat-label>Description</mat-label><input matInput formControlName="description" /></mat-form-field>
-      <button mat-flat-button color="primary" type="submit" [disabled]="productForm.invalid">Save Product</button>
+    <form [formGroup]="productForm" (ngSubmit)="save()" class="grid md:grid-cols-2 gap-3 border rounded p-4 mb-7">
+      <mat-form-field><mat-label>Name</mat-label><input matInput formControlName="name"></mat-form-field>
+      <mat-form-field><mat-label>SKU</mat-label><input matInput formControlName="sku"></mat-form-field>
+      <mat-form-field><mat-label>Brand</mat-label><input matInput formControlName="brand"></mat-form-field>
+      <mat-form-field><mat-label>Category</mat-label><input matInput formControlName="category"></mat-form-field>
+      <mat-form-field><mat-label>Price</mat-label><input matInput type="number" formControlName="price"></mat-form-field>
+      <mat-form-field><mat-label>Stock</mat-label><input matInput type="number" formControlName="stock"></mat-form-field>
+      <mat-form-field><mat-label>Unit / weight</mat-label><input matInput formControlName="unit"></mat-form-field>
+      <div><label class="block text-sm mb-1" for="product-image">Product image</label>
+        <input id="product-image" type="file" accept="image/jpeg,image/png,image/webp" (change)="upload($event)">
+        @if (uploading()) { <p class="text-sm">Uploading…</p> }
+        @if (productForm.value.pictureUrl) { <img [src]="productForm.value.pictureUrl" alt="Product preview" class="w-20 h-20 object-cover mt-2 rounded"> }
+      </div>
+      <mat-form-field class="md:col-span-2"><mat-label>Description</mat-label><textarea matInput formControlName="description"></textarea></mat-form-field>
+      <mat-checkbox formControlName="isActive">Active</mat-checkbox>
+      <div class="flex gap-2"><button mat-flat-button type="submit" [disabled]="productForm.invalid || uploading()">Save</button><button mat-stroked-button type="button" (click)="reset()">Cancel</button></div>
     </form>
   }
 
-  @if (products()) {
-    <table class="w-full text-left border-collapse text-sm">
-      <thead><tr class="border-b bg-gray-50">
-        <th class="p-3">ID</th><th class="p-3">Name</th><th class="p-3">Brand</th><th class="p-3">Price</th><th class="p-3">Stock</th>
-      </tr></thead>
-      <tbody>
-        @for (p of products()!.data; track p.id) {
-          <tr class="border-b hover:bg-gray-50">
-            <td class="p-3">{{ p.id }}</td><td class="p-3">{{ p.name }}</td><td class="p-3">{{ p.brand }}</td>
-            <td class="p-3">{{ p.price | currency: 'INR' }}</td><td class="p-3">{{ p.quantityInStock }}</td>
-          </tr>
-        }
-      </tbody>
-    </table>
-  }
+  <div class="overflow-x-auto"><table class="w-full text-sm"><thead><tr class="border-b bg-gray-50"><th class="p-3 text-left">Product</th><th>SKU</th><th>Category</th><th>Price</th><th>Stock</th><th>Status</th><th></th></tr></thead>
+    <tbody>@for (p of products(); track p.id) {
+      <tr class="border-b"><td class="p-3"><div class="flex gap-2 items-center"><img [src]="p.pictureUrl" [alt]="p.name" class="w-10 h-10 object-cover rounded"><span><strong>{{ p.name }}</strong><br>{{ p.brand }}</span></div></td>
+        <td class="text-center">{{ p.sku }}</td><td class="text-center">{{ p.category }}</td><td class="text-center">{{ p.price | currency:'INR' }}</td>
+        <td class="text-center">{{ p.stock }} {{ p.unit }}</td><td class="text-center">{{ p.isActive ? 'Active' : 'Inactive' }}</td>
+        <td class="space-x-2"><button mat-stroked-button (click)="edit(p)">Edit</button><button mat-stroked-button (click)="toggle(p)">{{ p.isActive ? 'Disable' : 'Enable' }}</button><button mat-stroked-button (click)="archive(p)">Archive</button></td></tr>
+    } @empty { <tr><td colspan="7" class="p-8 text-center text-gray-500">No products found.</td></tr> }</tbody></table></div>
+  <div class="flex justify-end gap-2 mt-4"><button mat-stroked-button [disabled]="page() === 1" (click)="go(page() - 1)">Previous</button>
+    <span class="py-2">Page {{ page() }}</span><button mat-stroked-button [disabled]="page() * 20 >= total()" (click)="go(page() + 1)">Next</button></div>
 </div>

@@ -3,6 +3,14 @@
     <h1 class="text-2xl font-bold">Manage Orders</h1>
     <a mat-stroked-button routerLink="/admin">Dashboard</a>
   </div>
+  <div class="flex gap-2 mb-4">
+    <input [(ngModel)]="search" (keyup.enter)="load()" placeholder="Order number or customer email" class="border rounded px-3 py-2 flex-1">
+    <select [(ngModel)]="status" (change)="load()" class="border rounded px-3"><option value="">All statuses</option>@for (s of statuses; track s) { <option [value]="s">{{ label(s) }}</option> }</select>
+    <select [(ngModel)]="sort" (change)="load()" class="border rounded px-3"><option value="newest">Newest</option><option value="oldest">Oldest</option></select>
+    <input type="date" [(ngModel)]="from" (change)="load()" class="border rounded px-2" aria-label="Orders from date">
+    <input type="date" [(ngModel)]="to" (change)="load()" class="border rounded px-2" aria-label="Orders to date">
+    <button mat-stroked-button (click)="load()">Search</button>
+  </div>
 
   @if (orders().length) {
     <div class="overflow-x-auto">
@@ -15,7 +23,7 @@
           @for (order of orders(); track order.id) {
             <tr class="border-b">
               <td class="p-3">#{{ order.id }}</td>
-              <td class="p-3">{{ order.buyerEmail }}</td>
+              <td class="p-3"><a [routerLink]="['/admin/orders', order.id]" class="text-blue-700">{{ order.customer }}</a></td>
               <td class="p-3">{{ order.orderDate | date: 'short' }}</td>
               <td class="p-3">{{ label(order.status) }}</td>
               <td class="p-3">
@@ -28,7 +36,7 @@
               <td class="p-3">
                 <mat-form-field appearance="outline" class="!w-36">
                   <mat-select [value]="order.status" (selectionChange)="updateStatus(order, $event.value)">
-                    @for (s of statuses; track s) { <mat-option [value]="s">{{ label(s) }}</mat-option> }
+                    @for (s of availableStatuses(order); track s) { <mat-option [value]="s">{{ label(s) }}</mat-option> }
                   </mat-select>
                 </mat-form-field>
               </td>
@@ -37,6 +45,8 @@
         </tbody>
       </table>
     </div>
+    <div class="flex justify-end gap-2 mt-4"><button mat-stroked-button [disabled]="page() === 1" (click)="go(page() - 1)">Previous</button>
+      <span class="py-2">Page {{ page() }}</span><button mat-stroked-button [disabled]="page() * 20 >= total()" (click)="go(page() + 1)">Next</button></div>
   } @else {
     <p class="text-gray-500 text-center py-12">No orders yet</p>
   }

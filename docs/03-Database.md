@@ -22,8 +22,10 @@ Connection string key: `ConnectionStrings:DefaultConnection`
 | `ProductBrand` | ProductBrands | Brand taxonomy |
 | `ProductImage` | ProductImages | Additional product images |
 | `Inventory` | Inventories | On-hand and reserved stock per product |
+| `InventoryTransaction` | InventoryTransactions | Immutable stock movement history |
 | `Order` | Orders | Customer orders with owned `ShipToAddress` |
 | `OrderItem` | OrderItems | Line items |
+| `OrderStatusHistory` | OrderStatusHistories | Administrative status transition history |
 | `Payment` | Payments | Stripe payment records |
 | `Coupon` | Coupons | Discount codes |
 | `CouponUsage` | CouponUsages | Per-user coupon redemption tracking |
@@ -61,6 +63,10 @@ Configured in `Infrastructure/Config/EntityConfigurations.cs`:
 | Coupons | Code | Unique |
 | Payments | PaymentIntentId | Unique |
 | Inventories | ProductId | Unique |
+| InventoryTransactions | ProductId, CreatedAt | History lookup |
+| OrderStatusHistories | OrderId, CreatedAt | Timeline lookup |
+| Products | SKU | Unique when populated |
+| Products | IsArchived, IsActive | Admin/customer catalog filtering |
 | Wishlists | UserId | Unique |
 | RefreshTokens | Token | Unique |
 
@@ -163,7 +169,7 @@ The application primarily uses portable EF Core LINQ, relationships, repositorie
 Later work:
 
 - Replace `UseSqlServer`/SQL Server package with Npgsql configuration.
-- Regenerate both migration histories for PostgreSQL; current migrations and explicit `decimal(18,2)` store types are SQL Server-oriented.
+- Regenerate both migration histories for PostgreSQL; current migrations, explicit `decimal(18,2)` store types, and the SQL Server filtered SKU index syntax are provider-oriented.
 - Validate identifier casing, string comparison/collation behavior, date/time mappings, transaction isolation, Identity schema, and concurrency under PostgreSQL.
 - Run the full integration suite against a real PostgreSQL instance rather than EF InMemory.
 

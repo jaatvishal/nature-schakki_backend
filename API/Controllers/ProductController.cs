@@ -4,6 +4,7 @@ using Core.Entities;
 using Core.Interfaces;
 using Core.Specifications;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 
 namespace API.Controllers;
 
@@ -23,11 +24,12 @@ public class ProductController(IGenericRepository<Product> repo) : BaseApiContro
     [HttpGet("{id:int}")]
     public async Task<ActionResult<Product>> GetProduct(int id)
     {
-        var product = await repo.GetByIdAsync(id);
+        var product = await repo.GetEntityWithSpec(new ProductSpecification(id));
         return product == null ? NotFound() : product;
     }
 
     [HttpPost]
+    [Authorize(Roles = "Admin")]
     public async Task<ActionResult<Product>> CreateProduct(Product product)
     {
         repo.Add(product);
@@ -38,6 +40,7 @@ public class ProductController(IGenericRepository<Product> repo) : BaseApiContro
     }
 
     [HttpPut("{id:int}")]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> UpdateProduct(int id, Product product)
     {
         if (id != product.Id || !repo.Exits(id))
@@ -48,6 +51,7 @@ public class ProductController(IGenericRepository<Product> repo) : BaseApiContro
     }
 
     [HttpDelete("{id:int}")]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> DeleteProduct(int id)
     {
         var product = await repo.GetByIdAsync(id);

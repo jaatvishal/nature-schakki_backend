@@ -10,6 +10,7 @@ using Microsoft.OpenApi.Models;
 using Serilog;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json.Serialization;
 using System.Threading.RateLimiting;
 
 Log.Logger = new LoggerConfiguration()
@@ -68,6 +69,7 @@ try
         .AddJsonOptions(options =>
         {
             options.JsonSerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
+            options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
         });
     builder.Services.AddEndpointsApiExplorer();
     builder.Services.AddSwaggerGen(options =>
@@ -135,9 +137,11 @@ try
     }
 
     app.UseHttpsRedirection();
+    app.UseStaticFiles();
     app.UseCors();
     app.UseRateLimiter();
     app.UseAuthentication();
+    app.UseMiddleware<ActiveUserMiddleware>();
     app.UseAuthorization();
 
     app.MapControllers();

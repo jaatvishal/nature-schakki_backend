@@ -23,6 +23,8 @@ public class StoreContext(DbContextOptions<StoreContext> options) : DbContext(op
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
     public DbSet<DeliveryMethod> DeliveryMethods => Set<DeliveryMethod>();
     public DbSet<Inventory> Inventories => Set<Inventory>();
+    public DbSet<InventoryTransaction> InventoryTransactions => Set<InventoryTransaction>();
+    public DbSet<OrderStatusHistory> OrderStatusHistories => Set<OrderStatusHistory>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

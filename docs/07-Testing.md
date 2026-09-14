@@ -91,6 +91,8 @@ Tests/
 
 Additional critical integration coverage includes registration activation by OTP, unverified login rejection, invalid/expired OTP, maximum attempts, resend cooldown and prior-code invalidation, safe email-provider failure, backend price recalculation, COD stock deduction/cart clearing, failed-checkout atomicity, and cross-customer order-detail protection.
 
+Admin integration coverage verifies Admin/customer role boundaries, dashboard access, product create/edit/activate/archive, image signature validation, inventory adjustment/history, audit output, COD payment history, and valid/invalid order status transitions. Angular guard tests cover direct Admin URL access for both Admin and Customer roles.
+
 ### Angular (`app.spec.ts`)
 
 | # | Test | Validates |

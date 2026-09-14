@@ -9,6 +9,10 @@ public class Product : BaseEntity
     public required string Type { get; set; }
     public required string Brand { get; set; }
     public int QuantityInStock { get; set; }
+    public string Sku { get; set; } = string.Empty;
+    public string Unit { get; set; } = "kg";
+    public bool IsActive { get; set; } = true;
+    public bool IsArchived { get; set; }
     public int CategoryId { get; set; }
     public int BrandId { get; set; }
     public ProductCategory? Category { get; set; }

@@ -14,6 +14,9 @@ Security controls across the Natures Chakki platform.
 | Refresh token rotation | Old token revoked on refresh (`AccountController`) |
 | Logout | Revokes all active refresh tokens for user |
 | Registration activation | Hashed, expiring email OTP with attempt and resend limits |
+| Account deactivation | `ActiveUserMiddleware` rejects existing JWT sessions for inactive users |
+| Admin APIs | Server-side Admin role plus Angular route guard |
+| Product uploads | 5 MB limit, image signature verification, generated safe file names |
 
 ### JWT Secret Management
 
@@ -67,6 +70,7 @@ Consider tighter limits on auth endpoints (`/account/login`, `/account/register`
 - Registered via `AddValidatorsFromAssemblyContaining<RegisterDtoValidator>()`
 - **Model binding** — ASP.NET Core automatic validation on DTOs
 - **EF Core** — column length constraints in `EntityConfigurations.cs`
+- **Admin DTOs** — dedicated write contracts prevent entity overposting
 
 Email OTP values are generated with a cryptographic RNG, stored only as salted hashes, replaced on resend, and never logged. SMTP credentials must be supplied through environment configuration or Key Vault.
 
