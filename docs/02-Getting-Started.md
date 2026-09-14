@@ -48,6 +48,21 @@ For Redis-backed carts, set `"CacheProvider": "Redis"` in `appsettings.Developme
 
 Copy `.env.example` to `.env` for local secret overrides (see Deployment docs).
 
+### Local JWT and Gmail SMTP secrets
+
+Keep credentials out of `appsettings*.json`. From the repository root, store local values with .NET User Secrets:
+
+```bash
+dotnet user-secrets set "JwtSettings:Key" "<your-random-key-of-at-least-32-bytes>" --project API
+dotnet user-secrets set "Email:FromAddress" "<your-gmail-address>" --project API
+dotnet user-secrets set "Email:Smtp:Username" "<your-gmail-address>" --project API
+dotnet user-secrets set "Email:Smtp:Password" "<your-gmail-app-password>" --project API
+```
+
+For Gmail, enable two-step verification and create an **App Password**. Do not use or commit the normal Google account password. Restart the API after changing secrets.
+
+If `JwtSettings:Key` is missing in Development, the API now creates a secure ephemeral key so login works, but all JWTs become invalid when the API restarts. Configure User Secrets for a stable local login session. Production startup still fails when the key is missing.
+
 ## 3. Database Migrations
 
 Migrations run automatically on API startup. To apply manually:

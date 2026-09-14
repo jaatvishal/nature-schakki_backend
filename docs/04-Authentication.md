@@ -120,3 +120,5 @@ Use the **Authorize** button and enter: `Bearer <your-jwt-token>`
 - Login is denied until `EmailConfirmed` is true.
 - `IEmailService` isolates registration from the configured provider. `SmtpEmailService` supports Gmail SMTP now; future providers only need a new implementation and DI selection.
 - SMTP credentials are configuration/environment values (`Email__Smtp__Username`, `Email__Smtp__Password`) and must not be committed.
+- Local development should use .NET User Secrets under the `API` project. `Email:Smtp:Password` must be a Gmail App Password, not the normal Gmail password.
+- Development generates an ephemeral JWT key when none is configured; use `JwtSettings:Key` in User Secrets to keep sessions valid across API restarts. Production requires an explicit key.
