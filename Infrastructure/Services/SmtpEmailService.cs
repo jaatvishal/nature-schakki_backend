@@ -19,9 +19,13 @@ public class SmtpEmailService(
         CancellationToken cancellationToken = default)
     {
         var settings = options.Value;
-        if (string.IsNullOrWhiteSpace(settings.FromAddress) ||
-            string.IsNullOrWhiteSpace(settings.Smtp.Username) ||
-            string.IsNullOrWhiteSpace(settings.Smtp.Password))
+        var username = settings.Smtp.Username.Trim();
+        var password = settings.Smtp.Password.Replace(" ", string.Empty);
+        var fromAddress = settings.FromAddress.Trim();
+
+        if (string.IsNullOrWhiteSpace(fromAddress) ||
+            string.IsNullOrWhiteSpace(username) ||
+            string.IsNullOrWhiteSpace(password))
         {
             logger.LogError("SMTP email provider is not configured.");
             throw new ServiceUnavailableException("Verification email is temporarily unavailable. Please try again.");
@@ -31,7 +35,7 @@ public class SmtpEmailService(
         {
             using var message = new MailMessage
             {
-                From = new MailAddress(settings.FromAddress, settings.FromName),
+                From = new MailAddress(fromAddress, settings.FromName),
                 Subject = subject,
                 Body = body,
                 IsBodyHtml = false
@@ -41,7 +45,9 @@ public class SmtpEmailService(
             using var client = new SmtpClient(settings.Smtp.Host, settings.Smtp.Port)
             {
                 EnableSsl = settings.Smtp.EnableSsl,
-                Credentials = new NetworkCredential(settings.Smtp.Username, settings.Smtp.Password)
+                UseDefaultCredentials = false,
+                DeliveryMethod = SmtpDeliveryMethod.Network,
+                Credentials = new NetworkCredential(username, password)
             };
 
             await client.SendMailAsync(message, cancellationToken);

@@ -59,7 +59,7 @@ dotnet user-secrets set "Email:Smtp:Username" "<your-gmail-address>" --project A
 dotnet user-secrets set "Email:Smtp:Password" "<your-gmail-app-password>" --project API
 ```
 
-For Gmail, enable two-step verification and create an **App Password**. Do not use or commit the normal Google account password. Restart the API after changing secrets.
+For Gmail, enable two-step verification and create an **App Password**. Google generates only the password: the SMTP username and sender address must both be the full Gmail address that created it. Do not use the normal Google account password. Copied spaces in the 16-character App Password are ignored by the SMTP implementation. Restart the API process after changing secrets.
 
 If `JwtSettings:Key` is missing in Development, the API now creates a secure ephemeral key so login works, but all JWTs become invalid when the API restarts. Configure User Secrets for a stable local login session. Production startup still fails when the key is missing.
 
