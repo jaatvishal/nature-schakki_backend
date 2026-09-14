@@ -19,29 +19,92 @@ public class AccountController(
     UserManager<AppUser> userManager,
     SignInManager<AppUser> signInManager,
     ITokenService tokenService,
-    AppIdentityDbContext identityContext) : ControllerBase
+    AppIdentityDbContext identityContext,
+    IEmailVerificationService emailVerificationService) : ControllerBase
 {
     [HttpPost("register")]
-    public async Task<ActionResult<UserDto>> Register(RegisterDto dto)
+    public async Task<ActionResult<RegisterResultDto>> Register(
+        RegisterDto dto,
+        CancellationToken cancellationToken)
     {
-        if (await userManager.FindByEmailAsync(dto.Email) != null)
-            return BadRequest("Email is already registered.");
+        var existingUser = await userManager.FindByEmailAsync(dto.Email);
+        if (existingUser != null)
+        {
+            return Conflict(existingUser.EmailConfirmed
+                ? "Email is already registered."
+                : "Registration is pending email verification. Request a new code.");
+        }
 
         var user = new AppUser
         {
             UserName = dto.Email,
             Email = dto.Email,
-            DisplayName = dto.DisplayName,
-            EmailConfirmed = true
+            DisplayName = $"{dto.FirstName.Trim()} {dto.LastName.Trim()}",
+            EmailConfirmed = false
         };
 
         var result = await userManager.CreateAsync(user, dto.Password);
         if (!result.Succeeded)
-            return BadRequest(result.Errors);
+            return ValidationProblem(new ValidationProblemDetails(
+                result.Errors
+                    .GroupBy(x => x.Code)
+                    .ToDictionary(x => x.Key, x => x.Select(e => e.Description).ToArray())));
 
-        await userManager.AddToRoleAsync(user, "Customer");
+        var roleResult = await userManager.AddToRoleAsync(user, "Customer");
+        if (!roleResult.Succeeded)
+        {
+            await userManager.DeleteAsync(user);
+            return Problem(statusCode: 500, title: "Registration failed.");
+        }
 
-        return await CreateUserDto(user);
+        await emailVerificationService.SendOtpAsync(
+            user.Id, user.Email!, false, cancellationToken);
+
+        return Accepted(new RegisterResultDto
+        {
+            Email = user.Email!,
+            Message = "Registration successful. Check your email for the verification code."
+        });
+    }
+
+    [HttpPost("verify-email")]
+    public async Task<ActionResult<UserDto>> VerifyEmail(
+        VerifyEmailOtpDto dto,
+        CancellationToken cancellationToken)
+    {
+        var user = await userManager.FindByEmailAsync(dto.Email);
+        if (user == null)
+            return BadRequest("Verification code is invalid or expired.");
+        if (user.EmailConfirmed)
+            return Conflict("Email is already verified.");
+
+        await emailVerificationService.VerifyOtpAsync(user.Id, dto.Otp, cancellationToken);
+        return Ok(await CreateUserDto(user));
+    }
+
+    [HttpPost("resend-verification")]
+    public async Task<ActionResult<RegisterResultDto>> ResendVerification(
+        ResendEmailOtpDto dto,
+        CancellationToken cancellationToken)
+    {
+        var user = await userManager.FindByEmailAsync(dto.Email);
+        if (user == null)
+            return Ok(new RegisterResultDto
+            {
+                Email = dto.Email,
+                Message = "If the account is awaiting verification, a new code has been sent."
+            });
+        if (user.EmailConfirmed)
+            return Conflict("Email is already verified.");
+
+        await emailVerificationService.SendOtpAsync(
+            user.Id, user.Email!, true, cancellationToken);
+
+        return Ok(new RegisterResultDto
+        {
+            Email = user.Email!,
+            Message = "A new verification code has been sent."
+        });
     }
 
     [HttpPost("login")]
@@ -52,6 +115,8 @@ public class AccountController(
 
         var result = await signInManager.CheckPasswordSignInAsync(user, dto.Password, false);
         if (!result.Succeeded) return Unauthorized("Invalid credentials.");
+        if (!user.EmailConfirmed)
+            return Unauthorized("Email verification is required.");
 
         return await CreateUserDto(user);
     }
@@ -62,7 +127,7 @@ public class AccountController(
     {
         var user = await userManager.FindByEmailAsync(User.FindFirstValue(ClaimTypes.Email)!);
         if (user == null) return Unauthorized();
-        return await CreateUserDto(user);
+        return await CreateUserDto(user, issueRefreshToken: false);
     }
 
     [HttpPost("refresh")]
@@ -100,20 +165,36 @@ public class AccountController(
         return Ok();
     }
 
-    private async Task<UserDto> CreateUserDto(AppUser user)
+    private async Task<UserDto> CreateUserDto(
+        AppUser user,
+        bool issueRefreshToken = true)
     {
         var roles = await userManager.GetRolesAsync(user);
         var token = tokenService.CreateToken(user.Id, user.Email!, user.DisplayName, roles);
-        var refreshToken = tokenService.GenerateRefreshToken();
+        var refreshToken = string.Empty;
+        if (issueRefreshToken)
+        {
+            refreshToken = tokenService.GenerateRefreshToken();
+            identityContext.RefreshTokens.Add(new RefreshToken
+            {
+                UserId = user.Id,
+                Token = refreshToken,
+                ExpiresAt = DateTime.UtcNow.AddDays(7)
+            });
+            await identityContext.SaveChangesAsync();
+        }
 
-        identityContext.RefreshTokens.Add(new RefreshToken
+        var names = user.DisplayName.Split(' ', 2, StringSplitOptions.RemoveEmptyEntries);
+        return new UserDto
         {
             UserId = user.Id,
-            Token = refreshToken,
-            ExpiresAt = DateTime.UtcNow.AddDays(7)
-        });
-        await identityContext.SaveChangesAsync();
-
-        return new UserDto(user.Email!, user.DisplayName, token, refreshToken);
+            Email = user.Email!,
+            DisplayName = user.DisplayName,
+            FirstName = names.ElementAtOrDefault(0) ?? user.DisplayName,
+            LastName = names.ElementAtOrDefault(1) ?? string.Empty,
+            Roles = roles.ToList(),
+            Token = token,
+            RefreshToken = refreshToken
+        };
     }
 }

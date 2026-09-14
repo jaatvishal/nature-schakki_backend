@@ -1,5 +1,7 @@
 export type User = {
+  id: number;
   email: string;
+  displayName: string;
   firstName: string;
   lastName: string;
   roles: string[];
@@ -19,9 +21,17 @@ export type RegisterRequest = {
 };
 
 export type AuthResponse = {
+  userId: number;
   email: string;
+  displayName: string;
   firstName: string;
   lastName: string;
   roles: string[];
   token: string;
+  refreshToken: string;
+};
+
+export type RegisterResult = {
+  email: string;
+  message: string;
 };

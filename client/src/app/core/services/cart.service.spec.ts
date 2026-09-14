@@ -3,6 +3,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { CartService } from './cart.service';
 import { environment } from '../../../environments/environment';
+import { provideRouter } from '@angular/router';
 
 describe('CartService', () => {
   let service: CartService;
@@ -11,7 +12,7 @@ describe('CartService', () => {
   beforeEach(() => {
     localStorage.clear();
     TestBed.configureTestingModule({
-      providers: [provideHttpClient(), provideHttpClientTesting()],
+      providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([])],
     });
     service = TestBed.inject(CartService);
     httpMock = TestBed.inject(HttpTestingController);

@@ -14,6 +14,13 @@
             <p class="font-semibold">Order #{{ order.id }}</p>
             <p class="text-sm text-gray-500">{{ order.orderDate | date: 'medium' }}</p>
             <p class="text-sm">Status: <span class="font-medium">{{ order.status }}</span></p>
+            <p class="text-sm">Payment: {{ order.paymentMethod }} ({{ order.paymentStatus }})</p>
+            <p class="text-sm text-gray-600">{{ order.orderItems.length }} item(s)</p>
+            <ul class="mt-2 text-sm text-gray-600">
+              @for (item of order.orderItems; track item.productId) {
+                <li>{{ item.productName }} × {{ item.quantity }}</li>
+              }
+            </ul>
           </div>
           <div class="text-right">
             <p class="font-bold">{{ order.total | currency: 'INR' }}</p>

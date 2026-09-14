@@ -25,11 +25,14 @@ describe('AuthService', () => {
 
   it('should login and store user', () => {
     const response = {
+      userId: 1,
       email: 'test@test.com',
+      displayName: 'Test User',
       firstName: 'Test',
       lastName: 'User',
       roles: ['Customer'],
       token: 'jwt-token',
+      refreshToken: 'refresh-token',
     };
 
     service.login({ email: 'test@test.com', password: 'Pass@123' }).subscribe();
@@ -47,8 +50,33 @@ describe('AuthService', () => {
     localStorage.setItem('user', JSON.stringify({ email: 'a@b.com', roles: [] }));
 
     service.logout();
+    httpMock.expectOne(`${environment.apiUrl}/v1/account/logout`).flush({});
 
     expect(service.isLoggedIn()).toBe(false);
     expect(localStorage.getItem('token')).toBeNull();
+  });
+
+  it('restores and validates authentication after refresh', async () => {
+    localStorage.setItem('token', 'persisted-token');
+    localStorage.setItem('refreshToken', 'persisted-refresh-token');
+
+    const initialization = service.initialize();
+    const req = httpMock.expectOne(`${environment.apiUrl}/v1/account/current`);
+    expect(req.request.headers.get('Authorization')).toBeNull();
+    req.flush({
+      userId: 7,
+      email: 'refresh@test.com',
+      displayName: 'Refresh User',
+      firstName: 'Refresh',
+      lastName: 'User',
+      roles: ['Customer'],
+      token: 'validated-token',
+      refreshToken: '',
+    });
+    await initialization;
+
+    expect(service.isLoggedIn()).toBe(true);
+    expect(service.currentUser()?.id).toBe(7);
+    expect(service.getToken()).toBe('validated-token');
   });
 });

@@ -98,6 +98,10 @@ Use double-underscore notation for nested config in App Service / containers:
 | `StripeSettings__SecretKey` | Stripe API key | Yes |
 | `StripeSettings__PublishableKey` | Stripe public key | Yes (frontend) |
 | `StripeSettings__WebhookSecret` | Webhook signing | Yes |
+| `Email__Provider` | Email provider (`Smtp`) | Yes |
+| `Email__FromAddress` | Verified sender address | Yes |
+| `Email__Smtp__Host` / `Email__Smtp__Port` | SMTP endpoint | Yes |
+| `Email__Smtp__Username` / `Email__Smtp__Password` | SMTP credentials (Key Vault) | Yes |
 | `SeedUsers__AdminEmail` | Dev seed only | No (omit in prod) |
 | `SeedUsers__AdminPassword` | Dev seed only | No (omit in prod) |
 

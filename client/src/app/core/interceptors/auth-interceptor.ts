@@ -19,7 +19,13 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
 
   return next(authReq).pipe(
     catchError((error: HttpErrorResponse) => {
-      if (error.status === 401 && !req.url.includes('/account/refresh-token')) {
+      if (
+        error.status === 401 &&
+        !req.url.includes('/account/refresh') &&
+        !req.url.includes('/account/login') &&
+        !req.url.includes('/account/verify-email') &&
+        authService.hasRefreshToken()
+      ) {
         return handle401(authService, authReq, next);
       }
       return throwError(() => error);

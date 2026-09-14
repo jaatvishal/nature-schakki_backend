@@ -15,6 +15,7 @@ public class Order : BaseEntity
     public decimal DeliveryCost { get; set; }
     public decimal Discount { get; set; }
     public decimal Total { get; set; }
+    public string PaymentMethod { get; set; } = "COD";
     public OrderStatus Status { get; set; } = OrderStatus.Pending;
     public string? PaymentIntentId { get; set; }
     public int? CouponId { get; set; }

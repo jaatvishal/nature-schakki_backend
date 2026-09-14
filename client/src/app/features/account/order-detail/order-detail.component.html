@@ -10,10 +10,7 @@
       <div class="border rounded-lg p-4">
         <h2 class="font-semibold mb-2">Shipping Address</h2>
         <p>{{ order()!.shippingAddress.firstName }} {{ order()!.shippingAddress.lastName }}</p>
-        <p>{{ order()!.shippingAddress.address1 }}</p>
-        @if (order()!.shippingAddress.address2) {
-          <p>{{ order()!.shippingAddress.address2 }}</p>
-        }
+        <p>{{ order()!.shippingAddress.street }}</p>
         <p>{{ order()!.shippingAddress.city }}, {{ order()!.shippingAddress.state }} {{ order()!.shippingAddress.zipCode }}</p>
         <p>{{ order()!.shippingAddress.country }}</p>
       </div>
@@ -21,6 +18,7 @@
         <h2 class="font-semibold mb-2">Order Info</h2>
         <p>Date: {{ order()!.orderDate | date: 'medium' }}</p>
         <p>Status: {{ order()!.status }}</p>
+        <p>Payment: {{ order()!.paymentMethod }} ({{ order()!.paymentStatus }})</p>
         <p>Delivery: {{ order()!.deliveryMethod }}</p>
       </div>
     </div>
@@ -41,7 +39,7 @@
 
     <div class="mt-6 text-right space-y-1">
       <p>Subtotal: {{ order()!.subtotal | currency: 'INR' }}</p>
-      <p>Delivery: {{ order()!.deliveryFee | currency: 'INR' }}</p>
+      <p>Delivery: {{ order()!.deliveryCost | currency: 'INR' }}</p>
       <p class="text-xl font-bold">Total: {{ order()!.total | currency: 'INR' }}</p>
     </div>
   } @else {

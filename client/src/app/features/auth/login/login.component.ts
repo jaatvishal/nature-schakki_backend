@@ -1,3 +1,4 @@
+import { HttpErrorResponse } from '@angular/common/http';
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
@@ -34,13 +35,8 @@ export class LoginComponent {
         const returnUrl = this.route.snapshot.queryParams['returnUrl'] || '/';
         this.router.navigateByUrl(returnUrl);
       },
-      error: (err: string[] | unknown) => {
-        if (Array.isArray(err)) {
-          err.forEach(e => this.snackbar.error(e));
-        } else {
-          this.snackbar.error('Invalid email or password');
-        }
-      },
+      error: (err: HttpErrorResponse) =>
+        this.snackbar.error(err.error?.detail || err.error || 'Invalid email or password'),
     });
   }
 }

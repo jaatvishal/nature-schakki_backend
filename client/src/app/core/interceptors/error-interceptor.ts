@@ -19,7 +19,7 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
               modelStateErrors.push(error.error.errors[key]);
             }
           }
-          throw modelStateErrors.flat();
+          return throwError(() => modelStateErrors.flat());
         } else {
           snackbar.error(error.error?.title || error.error?.message || 'Bad request');
         }
@@ -38,8 +38,14 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
       }
 
       if (error.status === 500) {
-        const navigationExtras: NavigationExtras = { state: { error: error.error } };
+        const navigationExtras: NavigationExtras = {
+          state: { error: { title: 'Server error', detail: 'Please try again later.' } },
+        };
         router.navigateByUrl('/server-error', navigationExtras);
+      }
+
+      if (error.status === 0) {
+        snackbar.error('Unable to reach the server. Please check your connection.');
       }
 
       return throwError(() => error);

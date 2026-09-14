@@ -23,7 +23,7 @@ export class OrderService {
   }
 
   getDeliveryMethods() {
-    return this.http.get<DeliveryMethod[]>(`${environment.apiUrl}/v1/delivery`);
+    return this.http.get<DeliveryMethod[]>(`${environment.apiUrl}/v1/deliverymethods`);
   }
 
   getAdminOrders() {
