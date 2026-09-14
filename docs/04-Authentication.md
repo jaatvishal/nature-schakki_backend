@@ -39,8 +39,6 @@ Claims issued by `TokenService.CreateToken`:
 - `ClaimTypes.Name` (display name)
 - `ClaimTypes.Role` (one per role)
 
-SignalR hub `/hubs/order` accepts JWT via query string `access_token` (see `OnMessageReceived` in `Program.cs`).
-
 ## Refresh Tokens
 
 Stored in `RefreshTokens` table (`AppIdentityDbContext`).

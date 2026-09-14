@@ -126,6 +126,10 @@ public class AccountController(
         var result = await signInManager.CheckPasswordSignInAsync(user, dto.Password, false);
         if (!result.Succeeded) return Unauthorized("Invalid credentials.");
         if (!user.EmailConfirmed) return Unauthorized("Email verification is required.");
+        if (!user.IsActive) return Unauthorized("This account is inactive.");
+
+        user.LastLoginAt = DateTime.UtcNow;
+        await userManager.UpdateAsync(user);
 
         return await CreateUserDto(user);
     }

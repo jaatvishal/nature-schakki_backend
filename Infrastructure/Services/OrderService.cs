@@ -87,9 +87,17 @@ public class OrderService(
 
         context.Orders.Add(order);
         await context.SaveChangesAsync();
+        context.OrderStatusHistories.Add(new OrderStatusHistory
+        {
+            OrderId = order.Id,
+            FromStatus = OrderStatus.Pending,
+            ToStatus = order.Status,
+            ChangedByUserId = userId
+        });
 
         foreach (var item in items)
-            await inventoryService.AdjustStockAsync(item.ProductId, -item.Quantity);
+            await inventoryService.AdjustStockAsync(
+                item.ProductId, -item.Quantity, "Order deduction", userId, order.Id);
 
         if (coupon != null)
             await couponService.RecordUsageAsync(coupon.Id, userId, order.Id);
@@ -120,7 +128,10 @@ public class OrderService(
             .ToListAsync();
     }
 
-    public async Task<Order> UpdateOrderStatusAsync(int orderId, OrderStatus status)
+    public async Task<Order> UpdateOrderStatusAsync(
+        int orderId,
+        OrderStatus status,
+        int? changedByUserId = null)
     {
         var order = await context.Orders
             .Include(x => x.OrderItems)
@@ -144,7 +155,8 @@ public class OrderService(
                 if (previousStatus == OrderStatus.Pending)
                     await inventoryService.ReleaseStockAsync(item.ProductId, item.Quantity);
                 else
-                    await inventoryService.AdjustStockAsync(item.ProductId, item.Quantity);
+                    await inventoryService.AdjustStockAsync(
+                        item.ProductId, item.Quantity, "Order cancellation reversal", order.UserId, order.Id);
             }
         }
 
@@ -152,13 +164,21 @@ public class OrderService(
         {
             foreach (var item in order.OrderItems)
             {
-                await inventoryService.AdjustStockAsync(item.ProductId, -item.Quantity);
+                await inventoryService.AdjustStockAsync(
+                    item.ProductId, -item.Quantity, "Payment-confirmed order deduction", order.UserId, order.Id);
                 var inventory = await context.Inventories.FirstOrDefaultAsync(x => x.ProductId == item.ProductId);
                 if (inventory != null)
                     inventory.ReservedQuantity = Math.Max(0, inventory.ReservedQuantity - item.Quantity);
             }
         }
 
+        context.OrderStatusHistories.Add(new OrderStatusHistory
+        {
+            OrderId = order.Id,
+            FromStatus = previousStatus,
+            ToStatus = status,
+            ChangedByUserId = changedByUserId
+        });
         await context.SaveChangesAsync();
         return order;
     }
@@ -173,6 +193,6 @@ public class OrderService(
         if (order.Status is OrderStatus.Shipped or OrderStatus.OutForDelivery or OrderStatus.Delivered)
             throw new BadRequestException("Cannot cancel a shipped or delivered order.");
 
-        await UpdateOrderStatusAsync(orderId, OrderStatus.Cancelled);
+        await UpdateOrderStatusAsync(orderId, OrderStatus.Cancelled, userId);
     }
 }

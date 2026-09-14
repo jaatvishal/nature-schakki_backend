@@ -9,6 +9,8 @@ Natures Chakki e-commerce platform — phased delivery tracker.
 
 All new work must be based on `cursor/ui-improvements-702b`, which contains the latest Angular UI, admin dashboard, order lifecycle, payment/inventory flow, and customer order experience. The registration OTP and COD hardening changes were implemented on top of that baseline; older phase branches are historical references and must not be used as the base for future feature work.
 
+The expanded Admin Portal is implemented on `cursor/admin-portal-latest-ui-702b`, directly on top of `cursor/otp-cod-on-latest-ui-702b`. After these branches are merged, the merged target branch becomes the baseline; do not restart from an older phase branch.
+
 Current customer flow:
 
 `Register → Email OTP verification → Login/session restoration → Customer cart → COD checkout → Transactional order and stock update → Cart clear → My Orders`
@@ -70,7 +72,7 @@ Current customer flow:
 | `InventoryService` | ✅ Complete | Unit tested |
 | Orders API | ✅ Complete | `OrdersController` |
 | Checkout + order history UI | ✅ Complete | `checkout/`, `account/orders/` |
-| SignalR order hub | ✅ Complete | `OrderHub` |
+| Customer order timeline | ✅ Complete | Account order detail UI |
 
 ---
 
@@ -113,8 +115,11 @@ Current customer flow:
 |------|--------|-------|
 | Admin API (products, orders, users, coupons, reviews) | ✅ Complete | `AdminController` |
 | Admin guard + routes | ✅ Complete | `admin.guard.ts` |
-| Dashboard, products, orders UI | ✅ Complete | `features/admin/` |
-| Audit logging service | ✅ Complete | `AuditService` |
+| Operational dashboard and reporting APIs | ✅ Complete | KPIs, trends, top products, recent activity |
+| Users, products, categories, orders, inventory, payments UI | ✅ Complete | `features/admin/` |
+| Local product image upload | ✅ Complete | `IFileStorageService`, validated Admin upload |
+| Inventory and order status history | ✅ Complete | movement/history tables |
+| Audit logging and operational alerts | ✅ Complete | `AuditService`, `/admin/audit`, `/admin/alerts` |
 
 ---
 
@@ -170,7 +175,7 @@ Current customer flow:
 2. Add Playwright/Cypress E2E tests for checkout
 3. Tighten rate limits on auth endpoints
 4. Add OpenTelemetry / Application Insights integration
-5. Email service beyond `LogEmailService` (SendGrid / ACS)
+5. Add an email provider implementation beyond `SmtpEmailService` (SendGrid / ACS)
 
 ---
 

@@ -24,7 +24,6 @@ flowchart TB
         API[REST Controllers v1]
         ID[Identity + JWT]
         SVC[Domain Services]
-        HUB[SignalR OrderHub]
     end
 
     subgraph Data["Persistence"]
@@ -35,7 +34,7 @@ flowchart TB
     STRIPE[Stripe]
 
     SHOP & CART & CHK & ADM -->|HTTPS + JWT| API
-    API --> ID & SVC & HUB
+    API --> ID & SVC
     SVC --> SQL
     SVC --> REDIS
     CHK --> STRIPE
@@ -53,7 +52,7 @@ flowchart TB
 - **Reviews** — Customer reviews with admin moderation
 - **Admin** — Product, order, coupon, and review management
 - **Auth** — Identity, JWT, refresh tokens, role-based access (Admin / Customer)
-- **Real-time** — SignalR order status notifications
+- **Order tracking** — Customer and Admin status timelines
 
 ## Tech Stack
 
@@ -162,6 +161,7 @@ cd client && npm test
 | [08-Deployment](docs/08-Deployment.md) | Docker, Azure architecture |
 | [09-Security](docs/09-Security.md) | CORS, rate limiting, secrets |
 | [10-Features](docs/10-Feature-Documentation.md) | Feature reference |
+| [11-Admin Portal](docs/11-Admin-Portal.md) | Admin operations, security, inventory, uploads, reports |
 | [Implementation Plan](docs/IMPLEMENTATION-PLAN.md) | Phase status tracker |
 
 ## Docker

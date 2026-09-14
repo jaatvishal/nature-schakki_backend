@@ -66,7 +66,7 @@ Cart stored in Memory or Redis (`CacheProvider`). Not in SQL.
 
 Checkout currently supports **Cash on Delivery only**. A single generic Standard Delivery option is exposed; provider-specific UPS seed options are no longer shown.
 
-**Order lifecycle:** `Pending` → `PaymentReceived` (Paid) → `Processing` → `Packed` → `Shipped` → `OutForDelivery` → `Delivered`, plus `Cancelled`, `Refunded`, `Failed`. COD skips to `Processing`; Stripe webhook handles payment idempotently. Admin updates delivery status; customers receive in-app + SignalR notifications.
+**Order lifecycle:** `Pending` → `PaymentReceived` (Paid) → `Processing` → `Packed` → `Shipped` → `OutForDelivery` → `Delivered`, plus `Cancelled`, `Refunded`, `Failed`. COD skips to `Processing`; Stripe webhook handling remains available for future online checkout. Admin updates delivery status and customers see the persisted timeline.
 
 **Frontend:**
 
@@ -101,6 +101,10 @@ Mock mode available for development without Stripe keys.
 | Users | GET `/api/v1/admin/users` |
 | Coupons | GET/POST `/api/v1/admin/coupons` |
 | Reviews | GET pending, PUT moderate |
+| Categories | Paged list, create, edit, activate/deactivate |
+| Inventory | Paged stock view, adjustments, movement history |
+| Reports | Date-filtered revenue, sales, COD, cancellations, best sellers |
+| Audit & alerts | Administrative audit trail and operational alerts |
 
 **Frontend:** `client/src/app/features/admin/`
 
@@ -108,6 +112,9 @@ Mock mode available for development without Stripe keys.
 - `products.component.ts` — product management
 - `orders.component.ts` — order/delivery status updates
 - `payments.component.ts` — payment history
+- `users/`, `categories/`, `inventory/`, `reports/`, `audit/`, `alerts/` — operational administration
+
+See [11-Admin-Portal.md](./11-Admin-Portal.md) for API behavior, image-storage architecture, security boundaries, and operational flows.
 
 **Access:** Login as `admin@natureschakki.com` / `Admin@123!` → redirects to `/admin` with welcome message
 

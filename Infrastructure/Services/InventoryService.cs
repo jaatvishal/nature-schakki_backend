@@ -50,7 +50,12 @@ public class InventoryService(StoreContext context) : IInventoryService
         return product != null && product.QuantityInStock >= quantity;
     }
 
-    public async Task AdjustStockAsync(int productId, int quantity)
+    public async Task AdjustStockAsync(
+        int productId,
+        int quantity,
+        string reason = "Stock adjustment",
+        int? actorUserId = null,
+        int? orderId = null)
     {
         var inventory = await context.Inventories.FirstOrDefaultAsync(x => x.ProductId == productId);
         var product = await context.Products.FindAsync(productId)
@@ -62,13 +67,24 @@ public class InventoryService(StoreContext context) : IInventoryService
             context.Inventories.Add(inventory);
         }
 
-        if (inventory.QuantityOnHand + quantity < 0)
+        var previousQuantity = inventory.QuantityOnHand;
+        if (previousQuantity + quantity < 0)
             throw new BadRequestException($"Insufficient stock for product {productId}.");
 
         inventory.QuantityOnHand += quantity;
         product.QuantityInStock = inventory.QuantityOnHand;
         inventory.UpdatedAt = DateTime.UtcNow;
         product.UpdatedAt = DateTime.UtcNow;
+        context.InventoryTransactions.Add(new InventoryTransaction
+        {
+            ProductId = productId,
+            QuantityChange = quantity,
+            PreviousQuantity = previousQuantity,
+            NewQuantity = inventory.QuantityOnHand,
+            Reason = reason,
+            ActorUserId = actorUserId,
+            OrderId = orderId
+        });
         await context.SaveChangesAsync();
     }
 }

@@ -25,3 +25,9 @@ public class EmailVerificationOptions
     public int MaxAttempts { get; set; } = 5;
     public int ResendCooldownSeconds { get; set; } = 60;
 }
+
+public class FileStorageOptions
+{
+    public const string SectionName = "FileStorage";
+    public string Provider { get; set; } = "Local";
+}

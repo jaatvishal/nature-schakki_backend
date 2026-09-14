@@ -6,7 +6,7 @@ Natures Chakki is a **modular monolith** e-commerce platform: a single deployabl
 
 | Layer | Project | Responsibility |
 |-------|---------|----------------|
-| Presentation | `API/` | Controllers, middleware, SignalR hubs, Swagger, CORS, rate limiting |
+| Presentation | `API/` | Controllers, middleware, Swagger, CORS, rate limiting |
 | Application contracts | `Core/` | Entities, DTOs, interfaces, specifications, enums, exceptions |
 | Infrastructure | `Infrastructure/` | EF Core contexts, repositories, services, migrations, validators |
 | Frontend | `client/` | Angular 21 SPA (shop, cart, checkout, account, admin) |
@@ -42,6 +42,8 @@ Both contexts use the same `ConnectionStrings:DefaultConnection` but maintain se
 - **Specification** — `BaseSpecification<T>`, `ProductSpecification`, `OrderWithItemsSpecification`
 - **Strategy (cache)** — `CacheProvider` switches `ICartService` / `ICacheService` between Memory and Redis
 - **Domain services** — `OrderService`, `InventoryService`, `CouponService`, `StripePaymentService`
+- **Admin projections** — paged DTO-based operational APIs for users, products, orders, inventory, payments, reports, audit, and alerts
+- **Storage strategy** — `IFileStorageService` isolates local product uploads from a future Azure Blob implementation
 
 ## Architecture Diagram
 
@@ -56,7 +58,6 @@ flowchart TB
     subgraph API["API/ (ASP.NET Core 9)"]
         CTRL[Controllers v1]
         MW[ExceptionMiddleware]
-        HUB[OrderHub /hubs/order]
         HC[/health]
     end
 
@@ -90,7 +91,6 @@ flowchart TB
     SRV --> STRIPE
     SC --> SQL
     IC --> SQL
-    HUB --> CTRL
 ```
 
 ## API Surface

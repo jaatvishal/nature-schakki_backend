@@ -69,7 +69,14 @@ public static class InfrastructureServiceRegistration
                 ? ActivatorUtilities.CreateInstance<SmtpEmailService>(provider)
                 : throw new InvalidOperationException($"Unsupported email provider '{emailOptions.Provider}'.");
         });
-        services.AddScoped<IFileStorageService, LocalFileStorage>();
+        services.Configure<FileStorageOptions>(config.GetSection(FileStorageOptions.SectionName));
+        services.AddScoped<IFileStorageService>(provider =>
+        {
+            var storageOptions = config.GetSection(FileStorageOptions.SectionName).Get<FileStorageOptions>() ?? new();
+            return storageOptions.Provider.Equals("Local", StringComparison.OrdinalIgnoreCase)
+                ? ActivatorUtilities.CreateInstance<LocalFileStorage>(provider)
+                : throw new InvalidOperationException($"Unsupported file storage provider '{storageOptions.Provider}'.");
+        });
         services.AddScoped<IBasketService, BasketService>();
 
         var cacheProvider = config["CacheProvider"] ?? "Memory";

@@ -4,7 +4,8 @@ import { RouterLink } from '@angular/router';
 import { MatButton } from '@angular/material/button';
 import { MatCard, MatCardContent } from '@angular/material/card';
 import { AuthService } from '../../../core/services/auth.service';
-import { AdminDashboard, OrderService } from '../../../core/services/order.service';
+import { AdminService } from '../../../core/services/admin.service';
+import { AdminDashboard } from '../../../shared/models/admin';
 
 @Component({
   selector: 'app-dashboard',
@@ -13,7 +14,7 @@ import { AdminDashboard, OrderService } from '../../../core/services/order.servi
   templateUrl: './dashboard.component.html',
 })
 export class DashboardComponent implements OnInit {
-  private orderService = inject(OrderService);
+  private adminService = inject(AdminService);
   private auth = inject(AuthService);
 
   dashboard = signal<AdminDashboard | null>(null);
@@ -22,7 +23,7 @@ export class DashboardComponent implements OnInit {
   ngOnInit(): void {
     const user = this.auth.currentUser();
     if (user?.firstName) this.adminName.set(user.firstName);
-    this.orderService.getAdminDashboard().subscribe({
+    this.adminService.getDashboard().subscribe({
       next: data => this.dashboard.set(data),
       error: () => {},
     });

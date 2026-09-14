@@ -10,6 +10,7 @@ public class ProductCategoryConfiguration : IEntityTypeConfiguration<ProductCate
     {
         builder.Property(x => x.Name).IsRequired().HasMaxLength(100);
         builder.HasIndex(x => x.Name).IsUnique();
+        builder.HasIndex(x => x.IsActive);
     }
 }
 
@@ -77,6 +78,25 @@ public class InventoryConfiguration : IEntityTypeConfiguration<Inventory>
     {
         builder.HasIndex(x => x.ProductId).IsUnique();
         builder.HasOne(x => x.Product).WithOne(x => x.Inventory).HasForeignKey<Inventory>(x => x.ProductId);
+    }
+}
+
+public class InventoryTransactionConfiguration : IEntityTypeConfiguration<InventoryTransaction>
+{
+    public void Configure(EntityTypeBuilder<InventoryTransaction> builder)
+    {
+        builder.Property(x => x.Reason).IsRequired().HasMaxLength(200);
+        builder.HasOne(x => x.Product).WithMany().HasForeignKey(x => x.ProductId);
+        builder.HasIndex(x => new { x.ProductId, x.CreatedAt });
+    }
+}
+
+public class OrderStatusHistoryConfiguration : IEntityTypeConfiguration<OrderStatusHistory>
+{
+    public void Configure(EntityTypeBuilder<OrderStatusHistory> builder)
+    {
+        builder.HasOne(x => x.Order).WithMany().HasForeignKey(x => x.OrderId);
+        builder.HasIndex(x => new { x.OrderId, x.CreatedAt });
     }
 }
 
