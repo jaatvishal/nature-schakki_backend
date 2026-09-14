@@ -49,29 +49,27 @@
       </mat-step>
 
       <mat-step [stepControl]="deliveryForm" label="Delivery">
-        <form [formGroup]="deliveryForm" class="mt-4">
-          <mat-radio-group formControlName="deliveryMethodId" class="flex flex-col gap-3">
-            @for (method of deliveryMethods(); track method.id) {
-              <mat-radio-button [value]="method.id">
-                {{ method.shortName }} — {{ method.deliveryTime }} ({{ method.price | currency: 'INR' }})
-              </mat-radio-button>
-            }
-          </mat-radio-group>
-        </form>
+        <div class="mt-4 rounded-lg border p-4">
+          @if (selectedDelivery(); as method) {
+            <p class="font-medium">{{ method.shortName }}</p>
+            <p class="text-sm text-gray-600">
+              Estimated {{ method.deliveryTimeDays }} days · {{ method.price | currency: 'INR' }}
+            </p>
+          } @else {
+            <p class="text-sm text-gray-600">Loading delivery details…</p>
+          }
+        </div>
         <div class="mt-4 flex gap-2">
           <button mat-stroked-button matStepperPrevious>Back</button>
           <button mat-flat-button color="primary" matStepperNext [disabled]="deliveryForm.invalid">Next</button>
         </div>
       </mat-step>
 
-      <mat-step [stepControl]="paymentForm" label="Payment & Review">
-        <form [formGroup]="paymentForm" class="mt-4">
-          <mat-radio-group formControlName="paymentMethod" class="flex flex-col gap-3 mb-6">
-            <mat-radio-button value="card">Credit / Debit Card</mat-radio-button>
-            <mat-radio-button value="upi">UPI</mat-radio-button>
-            <mat-radio-button value="cod">Cash on Delivery</mat-radio-button>
-          </mat-radio-group>
-        </form>
+      <mat-step label="Payment & Review">
+        <div class="mt-4 mb-6 rounded-lg border border-green-200 bg-green-50 p-4">
+          <p class="font-semibold text-green-900">Cash on Delivery</p>
+          <p class="text-sm text-green-800">Pay when your order is delivered.</p>
+        </div>
 
         <div class="bg-gray-50 p-4 rounded-lg mb-4">
           <h3 class="font-semibold mb-2">Order Summary</h3>
@@ -97,8 +95,8 @@
 
         <div class="flex gap-2">
           <button mat-stroked-button matStepperPrevious>Back</button>
-          <button mat-flat-button color="primary" (click)="placeOrder()" [disabled]="paymentForm.invalid">
-            Place Order
+          <button mat-flat-button color="primary" (click)="placeOrder()" [disabled]="placingOrder()">
+            {{ placingOrder() ? 'Placing Order…' : 'Place COD Order' }}
           </button>
         </div>
       </mat-step>

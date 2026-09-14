@@ -4,6 +4,7 @@ import { tap } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { CartItem, ShoppingCart } from '../../shared/models/cart';
 import { Product } from '../../shared/models/product';
+import { AuthService } from './auth.service';
 
 const BUYER_ID_KEY = 'buyerId';
 
@@ -12,6 +13,7 @@ const BUYER_ID_KEY = 'buyerId';
 })
 export class CartService {
   private http = inject(HttpClient);
+  private authService = inject(AuthService);
   private baseUrl = environment.apiUrl + '/cart';
 
   private cartSignal = signal<ShoppingCart | null>(null);
@@ -25,6 +27,9 @@ export class CartService {
   );
 
   getBuyerId(): string {
+    const userId = this.authService.getUserId();
+    if (userId) return userId.toString();
+
     let buyerId = localStorage.getItem(BUYER_ID_KEY);
     if (!buyerId) {
       buyerId = crypto.randomUUID();
@@ -51,6 +56,10 @@ export class CartService {
     return this.http.delete(this.baseUrl, { params: { id } }).pipe(
       tap(() => this.cartSignal.set({ id, items: [] }))
     );
+  }
+
+  clearLocalCart() {
+    this.cartSignal.set({ id: this.getBuyerId(), items: [] });
   }
 
   addItem(product: Product, quantity = 1) {

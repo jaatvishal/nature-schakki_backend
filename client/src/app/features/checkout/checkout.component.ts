@@ -5,7 +5,6 @@ import { Router, RouterLink } from '@angular/router';
 import { MatButton } from '@angular/material/button';
 import { MatFormField, MatLabel } from '@angular/material/form-field';
 import { MatInput } from '@angular/material/input';
-import { MatRadioButton, MatRadioGroup } from '@angular/material/radio';
 import { MatStep, MatStepper } from '@angular/material/stepper';
 import { CartService } from '../../core/services/cart.service';
 import { OrderService } from '../../core/services/order.service';
@@ -22,8 +21,6 @@ import { DeliveryMethod } from '../../shared/models/order';
     MatFormField,
     MatLabel,
     MatInput,
-    MatRadioGroup,
-    MatRadioButton,
     MatButton,
     CurrencyPipe,
     RouterLink,
@@ -38,6 +35,7 @@ export class CheckoutComponent implements OnInit {
   private snackbar = inject(SnackbarService);
 
   step = signal(0);
+  placingOrder = signal(false);
   deliveryMethods = signal<DeliveryMethod[]>([]);
 
   addressForm = this.fb.group({
@@ -55,18 +53,19 @@ export class CheckoutComponent implements OnInit {
     deliveryMethodId: [null as number | null, Validators.required],
   });
 
-  paymentForm = this.fb.group({
-    paymentMethod: ['card', Validators.required],
-  });
-
   ngOnInit(): void {
     this.cartService.getCart().subscribe();
     this.orderService.getDeliveryMethods().subscribe({
-      next: methods => this.deliveryMethods.set(methods),
-      error: () => this.deliveryMethods.set([
-        { id: 1, shortName: 'Standard', deliveryTime: '3-5 days', price: 50 },
-        { id: 2, shortName: 'Express', deliveryTime: '1-2 days', price: 100 },
-      ]),
+      next: methods => {
+        this.deliveryMethods.set(methods);
+        if (methods.length)
+          this.deliveryForm.patchValue({ deliveryMethodId: methods[0].id });
+      },
+      error: () => {
+        const fallback = { id: 1, shortName: 'Standard Delivery', deliveryTimeDays: 5, price: 0 };
+        this.deliveryMethods.set([fallback]);
+        this.deliveryForm.patchValue({ deliveryMethodId: fallback.id });
+      },
     });
   }
 
@@ -80,31 +79,34 @@ export class CheckoutComponent implements OnInit {
   }
 
   placeOrder() {
-    if (this.addressForm.invalid || this.deliveryForm.invalid) return;
+    if (this.addressForm.invalid || this.deliveryForm.invalid || this.placingOrder()) return;
+    this.placingOrder.set(true);
+    const address = this.addressForm.getRawValue();
 
     const request = {
-      basketId: this.cartService.getBuyerId(),
       deliveryMethodId: this.deliveryForm.value.deliveryMethodId!,
-      shippingAddress: this.addressForm.getRawValue() as {
-        firstName: string;
-        lastName: string;
-        address1: string;
-        address2?: string;
-        city: string;
-        state: string;
-        zipCode: string;
-        country: string;
+      shipToAddress: {
+        firstName: address.firstName!,
+        lastName: address.lastName!,
+        street: [address.address1, address.address2].filter(Boolean).join(', '),
+        city: address.city!,
+        state: address.state!,
+        zipCode: address.zipCode!,
+        country: address.country!,
       },
-      paymentMethod: this.paymentForm.value.paymentMethod!,
+      paymentMethod: 'COD',
     };
 
     this.orderService.createOrder(request).subscribe({
       next: order => {
         this.snackbar.success('Order placed successfully');
-        this.cartService.deleteCart().subscribe();
+        this.cartService.clearLocalCart();
         this.router.navigate(['/account/orders', order.id]);
       },
-      error: () => this.snackbar.error('Failed to place order'),
+      error: () => {
+        this.placingOrder.set(false);
+        this.snackbar.error('Failed to place order');
+      },
     });
   }
 }

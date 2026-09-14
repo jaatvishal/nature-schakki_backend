@@ -1,6 +1,7 @@
 using Core.Interfaces;
 using FluentValidation;
 using Infrastructure.Data;
+using Infrastructure.Options;
 using Infrastructure.Services;
 using Infrastructure.Validators;
 using Microsoft.AspNetCore.Identity;
@@ -33,14 +34,16 @@ public static class InfrastructureServiceRegistration
                 options.UseSqlServer(config.GetConnectionString("DefaultConnection")));
         }
 
-        services.AddIdentity<Identity.AppUser, Identity.AppRole>(options =>
+        services.AddIdentityCore<Identity.AppUser>(options =>
             {
                 options.Password.RequireDigit = true;
                 options.Password.RequireLowercase = true;
                 options.Password.RequireUppercase = true;
                 options.Password.RequireNonAlphanumeric = false;
-                options.Password.RequiredLength = 6;
+                options.Password.RequiredLength = 8;
             })
+            .AddRoles<Identity.AppRole>()
+            .AddSignInManager()
             .AddEntityFrameworkStores<AppIdentityDbContext>()
             .AddDefaultTokenProviders();
 
@@ -56,7 +59,16 @@ public static class InfrastructureServiceRegistration
         services.AddScoped<IReviewService, ReviewService>();
         services.AddScoped<IAuditService, AuditService>();
         services.AddScoped<IPaymentService, StripePaymentService>();
-        services.AddScoped<IEmailService, LogEmailService>();
+        services.Configure<EmailOptions>(config.GetSection(EmailOptions.SectionName));
+        services.Configure<EmailVerificationOptions>(config.GetSection(EmailVerificationOptions.SectionName));
+        services.AddScoped<IEmailVerificationService, EmailVerificationService>();
+        services.AddScoped<IEmailService>(provider =>
+        {
+            var emailOptions = config.GetSection(EmailOptions.SectionName).Get<EmailOptions>() ?? new();
+            return emailOptions.Provider.Equals("Smtp", StringComparison.OrdinalIgnoreCase)
+                ? ActivatorUtilities.CreateInstance<SmtpEmailService>(provider)
+                : throw new InvalidOperationException($"Unsupported email provider '{emailOptions.Provider}'.");
+        });
         services.AddScoped<IFileStorageService, LocalFileStorage>();
         services.AddScoped<IBasketService, BasketService>();
 

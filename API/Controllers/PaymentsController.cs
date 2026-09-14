@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Stripe;
+using System.Security.Claims;
 
 namespace API.Controllers;
 
@@ -25,7 +26,9 @@ public class PaymentsController(
     [HttpPost("create-intent/{orderId:int}")]
     public async Task<ActionResult<PaymentIntentDto>> CreatePaymentIntent(int orderId)
     {
-        var order = await context.Orders.FindAsync(orderId);
+        var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        var order = await context.Orders
+            .FirstOrDefaultAsync(x => x.Id == orderId && x.UserId == userId);
         if (order == null) return NotFound();
 
         var paymentIntentId = await paymentService.CreatePaymentIntentAsync(order.Total);

@@ -20,8 +20,11 @@ public class OrdersController(
     IOrderNotificationService notificationService) : ControllerBase
 {
     [HttpPost]
-    public async Task<ActionResult<Order>> CreateOrder(CreateOrderDto dto)
+    public async Task<ActionResult<OrderDto>> CreateOrder(CreateOrderDto dto)
     {
+        if (!dto.PaymentMethod.Equals("COD", StringComparison.OrdinalIgnoreCase))
+            return BadRequest("Only Cash on Delivery is currently supported.");
+
         var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
         var email = User.FindFirstValue(ClaimTypes.Email)!;
         var cartId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
@@ -46,22 +49,23 @@ public class OrdersController(
             userId, email, address, dto.DeliveryMethodId, cart.Items, dto.CouponCode);
 
         await cartService.DeleteCartAsync(cartId);
-        return Ok(order);
+        return Ok(MapOrder(order));
     }
 
     [HttpGet]
-    public async Task<ActionResult<IReadOnlyList<Order>>> GetOrders()
+    public async Task<ActionResult<IReadOnlyList<OrderDto>>> GetOrders()
     {
         var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
-        return Ok(await orderService.GetOrdersForUserAsync(userId));
+        var orders = await orderService.GetOrdersForUserAsync(userId);
+        return Ok(orders.Select(MapOrder));
     }
 
     [HttpGet("{id:int}")]
-    public async Task<ActionResult<Order>> GetOrder(int id)
+    public async Task<ActionResult<OrderDto>> GetOrder(int id)
     {
         var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
         var order = await orderService.GetOrderByIdAsync(id, userId);
-        return order == null ? NotFound() : order;
+        return order == null ? NotFound() : Ok(MapOrder(order));
     }
 
     [HttpPost("{id:int}/cancel")]
@@ -72,4 +76,36 @@ public class OrdersController(
         await notificationService.NotifyOrderStatusChangedAsync(id, OrderStatus.Cancelled);
         return NoContent();
     }
+
+    private static OrderDto MapOrder(Order order) => new()
+    {
+        Id = order.Id,
+        OrderDate = order.OrderDate,
+        Status = order.Status.ToString(),
+        PaymentMethod = order.PaymentMethod,
+        PaymentStatus = "Pending",
+        ShippingAddress = new AddressDto
+        {
+            FirstName = order.ShipToAddress.FirstName,
+            LastName = order.ShipToAddress.LastName,
+            Street = order.ShipToAddress.Street,
+            City = order.ShipToAddress.City,
+            State = order.ShipToAddress.State,
+            ZipCode = order.ShipToAddress.ZipCode,
+            Country = order.ShipToAddress.Country
+        },
+        DeliveryMethod = order.DeliveryMethod?.ShortName ?? "Standard Delivery",
+        Subtotal = order.Subtotal,
+        DeliveryCost = order.DeliveryCost,
+        Discount = order.Discount,
+        Total = order.Total,
+        OrderItems = order.OrderItems.Select(x => new OrderItemDto
+        {
+            ProductId = x.ProductId,
+            ProductName = x.ProductName,
+            PictureUrl = x.PictureUrl,
+            Price = x.Price,
+            Quantity = x.Quantity
+        }).ToList()
+    };
 }
