@@ -16,10 +16,12 @@ export type Order = {
   deliveryMethod?: { shortName: string };
   subtotal: number;
   deliveryCost: number;
+  discount: number;
   total: number;
   status: string;
   orderItems: OrderItem[];
-  paymentStatus?: string;
+  paymentMethod: string;
+  paymentStatus: string;
 };
 
 export type CreateOrderRequest = {

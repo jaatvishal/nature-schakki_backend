@@ -6,6 +6,7 @@ using Core.Interfaces;
 using Core.Specifications;
 using Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
+using System.Data;
 
 namespace Infrastructure.Services;
 
@@ -20,9 +21,15 @@ public class OrderService(
     {
         if (items.Count == 0)
             throw new BadRequestException("Order must contain at least one item.");
+        if (items.Any(x => x.Quantity <= 0))
+            throw new BadRequestException("Order item quantities must be greater than zero.");
 
         var deliveryMethod = await context.DeliveryMethods.FindAsync(deliveryMethodId)
             ?? throw new NotFoundException("Delivery method not found.");
+
+        await using var transaction = context.Database.IsRelational()
+            ? await context.Database.BeginTransactionAsync(IsolationLevel.Serializable)
+            : null;
 
         var productIds = items.Select(x => x.ProductId).ToList();
         var products = await context.Products.Where(x => productIds.Contains(x.Id)).ToListAsync();
@@ -57,6 +64,8 @@ public class OrderService(
         if (!string.IsNullOrWhiteSpace(couponCode))
         {
             coupon = await couponService.ValidateCouponAsync(couponCode, userId, subtotal);
+            if (coupon == null)
+                throw new BadRequestException("Coupon is invalid.");
             discount = couponService.CalculateDiscount(coupon, subtotal);
         }
 
@@ -71,7 +80,8 @@ public class OrderService(
             DeliveryCost = deliveryCost,
             Discount = discount,
             Total = subtotal + deliveryCost - discount,
-            Status = OrderStatus.Pending,
+            PaymentMethod = "COD",
+            Status = OrderStatus.Processing,
             CouponId = coupon?.Id
         };
 
@@ -79,10 +89,14 @@ public class OrderService(
         await context.SaveChangesAsync();
 
         foreach (var item in items)
-            await inventoryService.ReserveStockAsync(item.ProductId, item.Quantity);
+            await inventoryService.AdjustStockAsync(item.ProductId, -item.Quantity);
 
         if (coupon != null)
             await couponService.RecordUsageAsync(coupon.Id, userId, order.Id);
+
+        await context.SaveChangesAsync();
+        if (transaction != null)
+            await transaction.CommitAsync();
 
         return order;
     }
@@ -126,7 +140,12 @@ public class OrderService(
         if (status == OrderStatus.Cancelled && previousStatus != OrderStatus.Cancelled)
         {
             foreach (var item in order.OrderItems)
-                await inventoryService.ReleaseStockAsync(item.ProductId, item.Quantity);
+            {
+                if (previousStatus == OrderStatus.Pending)
+                    await inventoryService.ReleaseStockAsync(item.ProductId, item.Quantity);
+                else
+                    await inventoryService.AdjustStockAsync(item.ProductId, item.Quantity);
+            }
         }
 
         if (OrderStatusRules.ConfirmsPayment(previousStatus, status))

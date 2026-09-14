@@ -1,13 +1,13 @@
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
-import { MatButton } from '@angular/material/button';
+import { MatIconButton } from '@angular/material/button';
 import { MatIcon } from '@angular/material/icon';
 
 @Component({
   selector: 'app-header-search',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, MatButton, MatIcon],
+  imports: [FormsModule, MatIconButton, MatIcon],
   template: `
   <form (submit)="onSearch($event)" class="hidden lg:flex items-center gap-2">
     <input

@@ -1,6 +1,7 @@
 export type User = {
   id: number;
   email: string;
+  displayName?: string;
   firstName: string;
   lastName: string;
   roles: string[];
@@ -28,4 +29,9 @@ export type AuthResponse = {
   roles: string[];
   token: string;
   refreshToken?: string;
+};
+
+export type RegisterResult = {
+  email: string;
+  message: string;
 };

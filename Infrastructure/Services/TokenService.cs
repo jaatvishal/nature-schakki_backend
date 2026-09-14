@@ -25,8 +25,12 @@ public class TokenService(
         };
         claims.AddRange(roles.Select(role => new Claim(ClaimTypes.Role, role)));
 
-        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(
-            config["JwtSettings:Key"] ?? throw new InvalidOperationException("JWT key not configured")));
+        var configuredKey = config["JwtSettings:Key"];
+        if (string.IsNullOrWhiteSpace(configuredKey) ||
+            Encoding.UTF8.GetByteCount(configuredKey) < 32)
+            throw new InvalidOperationException("JwtSettings:Key must contain at least 32 bytes.");
+
+        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(configuredKey));
         var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
         var expires = DateTime.UtcNow.AddMinutes(double.Parse(config["JwtSettings:DurationInMinutes"] ?? "60"));
 

@@ -50,9 +50,7 @@
       <mat-step [stepControl]="paymentForm" label="Payment">
         <form [formGroup]="paymentForm" class="mt-4">
           <mat-radio-group formControlName="paymentMethod" class="flex flex-col gap-3">
-            <mat-radio-button value="cod">Cash on Delivery</mat-radio-button>
-            <mat-radio-button value="card">Credit / Debit Card</mat-radio-button>
-            <mat-radio-button value="upi">UPI</mat-radio-button>
+            <mat-radio-button value="COD">Cash on Delivery</mat-radio-button>
           </mat-radio-group>
         </form>
         <div class="bg-gray-50 p-4 rounded-lg mt-4 text-sm">
@@ -76,7 +74,7 @@
           <div class="mt-4 flex gap-2">
             <button mat-stroked-button matStepperPrevious [disabled]="placing()">Back</button>
             <button mat-flat-button color="primary" (click)="placeOrder()" [disabled]="placing()">
-              {{ placing() ? 'Placing...' : 'Place Order' }}
+              {{ placing() ? 'Placing...' : 'Place COD Order' }}
             </button>
           </div>
         }

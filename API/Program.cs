@@ -8,6 +8,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using Serilog;
+using System.Security.Cryptography;
 using System.Text;
 using System.Threading.RateLimiting;
 
@@ -24,6 +25,17 @@ try
 
     builder.Services.AddInfrastructureServices(builder.Configuration, builder.Environment);
 
+    var jwtKey = builder.Configuration["JwtSettings:Key"];
+    if (string.IsNullOrWhiteSpace(jwtKey))
+    {
+        if (!builder.Environment.IsDevelopment())
+            throw new InvalidOperationException("JwtSettings:Key must be configured.");
+
+        jwtKey = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32));
+        builder.Configuration["JwtSettings:Key"] = jwtKey;
+        Log.Warning("JwtSettings:Key is missing; using an ephemeral development key.");
+    }
+
     builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         .AddJwtBearer(options =>
         {
@@ -35,9 +47,7 @@ try
                 ValidateIssuerSigningKey = true,
                 ValidIssuer = builder.Configuration["JwtSettings:Issuer"],
                 ValidAudience = builder.Configuration["JwtSettings:Audience"],
-                IssuerSigningKey = new SymmetricSecurityKey(
-                    Encoding.UTF8.GetBytes(builder.Configuration["JwtSettings:Key"]
-                        ?? "super_secret_development_key_at_least_32_chars"))
+                IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey))
             };
         });
 
@@ -147,6 +157,10 @@ try
     }
 
     app.Run();
+}
+catch (HostAbortedException)
+{
+    // Expected when EF Core tooling stops the host after creating services.
 }
 catch (Exception ex)
 {

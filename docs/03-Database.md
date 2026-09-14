@@ -48,6 +48,7 @@ Connection string key: `ConnectionStrings:DefaultConnection`
 - `Wishlist` → `WishlistItem` (1:N), one wishlist per `UserId`
 
 Identity tables (`AspNetUsers`, `AspNetRoles`, etc.) live in `AppIdentityDbContext` with `AppUser` (`IdentityUser<int>`) and `RefreshToken`.
+`EmailVerificationOtps` stores one hashed, expiring OTP record per unverified user.
 
 ## Indexes
 
@@ -150,3 +151,24 @@ dotnet ef migrations list --project Infrastructure --startup-project API --conte
 # Roll back
 dotnet ef database update <PreviousMigration> --project Infrastructure --startup-project API --context StoreContext
 ```
+
+## Database Portability Assessment
+
+No provider migration has been performed.
+
+### SQL Server → PostgreSQL: High
+
+The application primarily uses portable EF Core LINQ, relationships, repositories, owned entities, and EF transactions. No raw SQL, stored procedures, rowversion, or SQL Server-only query features were found.
+
+Later work:
+
+- Replace `UseSqlServer`/SQL Server package with Npgsql configuration.
+- Regenerate both migration histories for PostgreSQL; current migrations and explicit `decimal(18,2)` store types are SQL Server-oriented.
+- Validate identifier casing, string comparison/collation behavior, date/time mappings, transaction isolation, Identity schema, and concurrency under PostgreSQL.
+- Run the full integration suite against a real PostgreSQL instance rather than EF InMemory.
+
+### SQL Server → Cosmos DB: Low
+
+Cosmos DB is not a relational drop-in replacement. Main blockers are ASP.NET Identity's relational stores, two relational DbContexts sharing one database, joins/`Include`, foreign keys, unique constraints, owned address mapping, multi-entity checkout transactions, and the normalized order/product/inventory model.
+
+Later work would require aggregate/document redesign, explicit partition keys, denormalization, optimistic concurrency, idempotent inventory/order workflows instead of cross-partition relational transactions, Cosmos-specific repositories/migrations, and likely retaining Identity in a separate relational database.

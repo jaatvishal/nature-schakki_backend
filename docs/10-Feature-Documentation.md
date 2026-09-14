@@ -58,10 +58,13 @@ Cart stored in Memory or Redis (`CacheProvider`). Not in SQL.
 **Order creation flow:**
 
 1. Validate cart items and stock (`InventoryService.HasAvailableStockAsync`)
-2. Reserve stock (`ReserveStockAsync`)
+2. Reload products and prices from SQL; frontend names/prices are ignored
 3. Apply coupon if provided (`CouponService`)
 4. Calculate subtotal, delivery, discount, total
-5. Persist order with `OrderStatus.Pending`
+5. In a serializable relational transaction, persist the COD order/items and deduct inventory
+6. Commit, then clear the authenticated user's cart
+
+Checkout currently supports **Cash on Delivery only**. A single generic Standard Delivery option is exposed; provider-specific UPS seed options are no longer shown.
 
 **Order lifecycle:** `Pending` → `PaymentReceived` (Paid) → `Processing` → `Packed` → `Shipped` → `OutForDelivery` → `Delivered`, plus `Cancelled`, `Refunded`, `Failed`. COD skips to `Processing`; Stripe webhook handles payment idempotently. Admin updates delivery status; customers receive in-app + SignalR notifications.
 
@@ -172,6 +175,8 @@ Admin creates coupons via `/api/v1/admin/coupons`.
 **Backend:** `AccountController`
 
 - Profile via `GET /api/v1/account/current`
+- Registration requires expiring email OTP verification before login
+- OTP resend has cooldown, failed-attempt limits, and invalidates prior codes
 - Addresses managed through account-related endpoints and `Address` entity
 
 **Frontend:** `client/src/app/features/account/`

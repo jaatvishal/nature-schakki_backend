@@ -89,6 +89,8 @@ Tests/
 | 19 | `GetDeliveryMethods_ReturnsList` | `GET /api/v1/deliverymethods` |
 | 20 | `SearchProducts_WithBrandFilter_ReturnsFilteredResults` | Brand filter query param |
 
+Additional critical integration coverage includes registration activation by OTP, unverified login rejection, invalid/expired OTP, maximum attempts, resend cooldown and prior-code invalidation, safe email-provider failure, backend price recalculation, COD stock deduction/cart clearing, failed-checkout atomicity, and cross-customer order-detail protection.
+
 ### Angular (`app.spec.ts`)
 
 | # | Test | Validates |

@@ -2,8 +2,16 @@
 
 Natures Chakki e-commerce platform — phased delivery tracker.
 
-**Last updated:** August 2026  
+**Last updated:** September 2026  
 **Overall status:** Phases 2–12 largely complete ✅
+
+## Current Workflow Baseline
+
+All new work must be based on `cursor/ui-improvements-702b`, which contains the latest Angular UI, admin dashboard, order lifecycle, payment/inventory flow, and customer order experience. The registration OTP and COD hardening changes were implemented on top of that baseline; older phase branches are historical references and must not be used as the base for future feature work.
+
+Current customer flow:
+
+`Register → Email OTP verification → Login/session restoration → Customer cart → COD checkout → Transactional order and stock update → Cart clear → My Orders`
 
 ---
 

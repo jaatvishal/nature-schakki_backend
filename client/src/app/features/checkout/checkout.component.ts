@@ -47,18 +47,22 @@ export class CheckoutComponent implements OnInit {
   });
 
   deliveryForm = this.fb.group({ deliveryMethodId: [null as number | null, Validators.required] });
-  paymentForm = this.fb.group({ paymentMethod: ['cod', Validators.required] });
+  paymentForm = this.fb.group({ paymentMethod: ['COD', Validators.required] });
 
   ngOnInit(): void {
     const user = this.authService.currentUser();
     if (user) this.addressForm.patchValue({ firstName: user.firstName, lastName: user.lastName });
     this.cartService.getCart().subscribe({ error: () => this.router.navigateByUrl('/shop') });
     this.orderService.getDeliveryMethods().subscribe({
-      next: m => this.deliveryMethods.set(m),
-      error: () => this.deliveryMethods.set([
-        { id: 1, shortName: 'Standard', deliveryTimeDays: 5, price: 50 },
-        { id: 2, shortName: 'Express', deliveryTimeDays: 2, price: 100 },
-      ]),
+      next: methods => {
+        this.deliveryMethods.set(methods);
+        if (methods.length) this.deliveryForm.patchValue({ deliveryMethodId: methods[0].id });
+      },
+      error: () => {
+        const fallback = { id: 1, shortName: 'Standard Delivery', deliveryTimeDays: 5, price: 0 };
+        this.deliveryMethods.set([fallback]);
+        this.deliveryForm.patchValue({ deliveryMethodId: fallback.id });
+      },
     });
   }
 
@@ -85,7 +89,7 @@ export class CheckoutComponent implements OnInit {
     }).subscribe({
       next: order => {
         this.placedOrder.set(order);
-        this.cartService.deleteCart().subscribe();
+        this.cartService.clearLocalCart();
         this.snackbar.success('Order placed!');
         this.placing.set(false);
       },

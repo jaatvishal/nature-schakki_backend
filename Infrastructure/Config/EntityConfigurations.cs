@@ -39,6 +39,7 @@ public class OrderConfiguration : IEntityTypeConfiguration<Order>
         builder.Property(x => x.DeliveryCost).HasColumnType("decimal(18,2)");
         builder.Property(x => x.Discount).HasColumnType("decimal(18,2)");
         builder.Property(x => x.Total).HasColumnType("decimal(18,2)");
+        builder.Property(x => x.PaymentMethod).IsRequired().HasMaxLength(20);
         builder.HasMany(x => x.OrderItems).WithOne(x => x.Order).HasForeignKey(x => x.OrderId);
     }
 }

@@ -3,6 +3,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { CartService } from './cart.service';
 import { environment } from '../../../environments/environment';
+import { provideRouter } from '@angular/router';
 
 describe('CartService', () => {
   let service: CartService;
@@ -11,7 +12,7 @@ describe('CartService', () => {
   beforeEach(() => {
     localStorage.clear();
     TestBed.configureTestingModule({
-      providers: [provideHttpClient(), provideHttpClientTesting()],
+      providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([])],
     });
     service = TestBed.inject(CartService);
     httpMock = TestBed.inject(HttpTestingController);
@@ -23,8 +24,8 @@ describe('CartService', () => {
   });
 
   it('should create buyer id on init', () => {
-    expect(service.getBuyerId()).toBeTruthy();
-    expect(localStorage.getItem('buyerId')).toBeTruthy();
+    expect(service.getCartId()).toBeTruthy();
+    expect(localStorage.getItem('guestCartId')).toBeTruthy();
   });
 
   it('should fetch cart', () => {
@@ -35,7 +36,7 @@ describe('CartService', () => {
     });
 
     const req = httpMock.expectOne(
-      r => r.url.startsWith(`${environment.apiUrl}/cart`) && r.method === 'GET'
+      r => r.url.startsWith(`${environment.apiUrl}/v1/cart`) && r.method === 'GET'
     );
     req.flush(cart);
   });

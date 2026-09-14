@@ -18,10 +18,14 @@
               @if (order.deliveryMethod) {
                 <p class="text-sm text-gray-500 mt-1">Delivery: {{ order.deliveryMethod.shortName }}</p>
               }
+              <p class="text-sm text-gray-500">Payment: {{ order.paymentMethod }} ({{ order.paymentStatus }})</p>
+              @for (item of order.orderItems; track item.productId) {
+                <p class="text-sm text-gray-600">{{ item.productName }} × {{ item.quantity }}</p>
+              }
             </div>
             <div class="text-right">
               <p class="text-xl font-bold">{{ order.total | currency:'INR' }}</p>
-              <p class="text-sm text-gray-500">{{ order.orderItems?.length ?? 0 }} item(s)</p>
+              <p class="text-sm text-gray-500">{{ order.orderItems.length }} item(s)</p>
               <a mat-stroked-button [routerLink]="['/account/orders', order.id]" class="mt-2">Track Order</a>
             </div>
           </div>
