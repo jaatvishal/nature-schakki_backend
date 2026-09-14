@@ -4,7 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
 import { MatButton } from '@angular/material/button';
 import { MatChip } from '@angular/material/chips';
-import { MatFormField, MatLabel } from '@angular/material/form-field';
+import { MatFormField } from '@angular/material/form-field';
 import { MatIcon } from '@angular/material/icon';
 import { MatInput } from '@angular/material/input';
 import { CartService } from '../../../core/services/cart.service';
@@ -14,7 +14,7 @@ import { Product } from '../../../shared/models/product';
 
 @Component({
   selector: 'app-product-details',
-  imports: [CurrencyPipe, FormsModule, MatButton, MatIcon, MatFormField, MatInput, MatLabel, MatChip],
+  imports: [CurrencyPipe, FormsModule, MatButton, MatIcon, MatFormField, MatInput, MatChip],
   templateUrl: './product-details.component.html',
   styleUrl: './product-details.component.scss',
 })

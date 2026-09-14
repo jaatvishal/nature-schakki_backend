@@ -4,6 +4,8 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { provideRouter } from '@angular/router';
 import { AuthService } from './auth.service';
 import { environment } from '../../../environments/environment';
+import { Router } from '@angular/router';
+import { vi } from 'vitest';
 
 describe('AuthService', () => {
   let service: AuthService;
@@ -46,6 +48,7 @@ describe('AuthService', () => {
   });
 
   it('should logout and clear storage', () => {
+    vi.spyOn(TestBed.inject(Router), 'navigateByUrl').mockResolvedValue(true);
     localStorage.setItem('token', 'jwt-token');
     localStorage.setItem('user', JSON.stringify({ email: 'a@b.com', roles: [] }));
 
