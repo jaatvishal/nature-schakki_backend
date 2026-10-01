@@ -78,6 +78,7 @@ describe('CheckoutComponent', () => {
 
     component.placeOrder();
     component.placeOrder();
+    fixture.detectChanges();
 
     expect(createOrder).toHaveBeenCalledTimes(1);
     expect(component.placedOrder()?.id).toBe(42);
@@ -85,5 +86,7 @@ describe('CheckoutComponent', () => {
     expect(component.deliveryForm.disabled).toBe(true);
     expect(component.paymentForm.disabled).toBe(true);
     expect(sessionStorage.getItem('completedCheckoutOrder:7')).toBe('42');
+    expect(fixture.nativeElement.textContent).not.toContain('Paid');
+    expect(fixture.nativeElement.textContent).toContain('Processing');
   });
 });

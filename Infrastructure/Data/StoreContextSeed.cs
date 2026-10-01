@@ -26,6 +26,19 @@ public class StoreContextSeed
             }
         }
 
+        var standardDelivery = await context.DeliveryMethods.OrderBy(x => x.Price).FirstOrDefaultAsync();
+        if (standardDelivery != null &&
+            (standardDelivery.DeliveryTimeDays != 7 ||
+             standardDelivery.ShortName != "Standard Delivery" ||
+             !standardDelivery.Description.Contains("Delhi NCR")))
+        {
+            standardDelivery.ShortName = "Standard Delivery";
+            standardDelivery.Description =
+                "Delivery within 7 days. Available in Delhi NCR and Ghaziabad areas only.";
+            standardDelivery.DeliveryTimeDays = 7;
+            await context.SaveChangesAsync();
+        }
+
         if (!await context.Products.AnyAsync())
         {
             var productsPath = Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "Infrastructure", "Data", "SeedData", "products.json");

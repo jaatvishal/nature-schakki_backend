@@ -19,8 +19,8 @@ public class DeliveryMethodsController(StoreContext context) : ControllerBase
             {
                 x.Id,
                 ShortName = "Standard Delivery",
-                Description = "Standard local delivery",
-                x.DeliveryTimeDays,
+                Description = "Delivery within 7 days. Available in Delhi NCR and Ghaziabad areas only.",
+                DeliveryTimeDays = 7,
                 x.Price
             })
             .ToListAsync());

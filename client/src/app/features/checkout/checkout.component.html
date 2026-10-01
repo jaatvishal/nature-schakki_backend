@@ -59,9 +59,10 @@
         <form [formGroup]="deliveryForm" class="mt-4">
           <mat-radio-group formControlName="deliveryMethodId" class="flex flex-col gap-3">
             @for (m of deliveryMethods(); track m.id) {
-              <mat-radio-button [value]="m.id">{{ m.shortName }} — {{ m.deliveryTimeDays }} days ({{ m.price | currency:'INR' }})</mat-radio-button>
+              <mat-radio-button [value]="m.id">{{ m.shortName }} — within {{ m.deliveryTimeDays }} days ({{ m.price | currency:'INR' }})</mat-radio-button>
             }
           </mat-radio-group>
+          <p class="text-sm text-amber-700 mt-3">Currently available in Delhi NCR and Ghaziabad areas only.</p>
         </form>
         <div class="mt-4 flex gap-2">
           <button mat-stroked-button matStepperPrevious>Back</button>

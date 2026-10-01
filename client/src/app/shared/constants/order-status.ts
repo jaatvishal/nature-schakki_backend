@@ -8,6 +8,15 @@ export const ORDER_STATUS_STEPS = [
   'Delivered',
 ] as const;
 
+export const COD_ORDER_STATUS_STEPS = [
+  'Pending',
+  'Processing',
+  'Packed',
+  'Shipped',
+  'OutForDelivery',
+  'Delivered',
+] as const;
+
 export const ADMIN_ORDER_STATUSES = [
   ...ORDER_STATUS_STEPS,
   'Cancelled',
@@ -20,8 +29,8 @@ export function orderStatusLabel(status: string): string {
   return status.replace(/([A-Z])/g, ' $1').trim();
 }
 
-export function orderStepIndex(status: string): number {
-  const idx = ORDER_STATUS_STEPS.indexOf(status as (typeof ORDER_STATUS_STEPS)[number]);
+export function orderStepIndex(status: string, steps: readonly string[] = ORDER_STATUS_STEPS): number {
+  const idx = steps.indexOf(status);
   if (idx >= 0) return idx;
   if (status === 'Cancelled' || status === 'Refunded' || status === 'Failed') return -1;
   return 0;

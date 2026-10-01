@@ -12,7 +12,7 @@ import { CartService } from '../../core/services/cart.service';
 import { OrderService } from '../../core/services/order.service';
 import { SnackbarService } from '../../core/services/snackbar.service';
 import { DeliveryMethod, Order } from '../../shared/models/order';
-import { ORDER_STATUS_STEPS, orderStatusLabel } from '../../shared/constants/order-status';
+import { COD_ORDER_STATUS_STEPS, orderStatusLabel } from '../../shared/constants/order-status';
 
 @Component({
   selector: 'app-checkout',
@@ -33,7 +33,7 @@ export class CheckoutComponent implements OnInit {
   restoring = signal(false);
   placedOrder = signal<Order | null>(null);
   deliveryMethods = signal<DeliveryMethod[]>([]);
-  statusSteps = ORDER_STATUS_STEPS;
+  statusSteps = COD_ORDER_STATUS_STEPS;
 
   addressForm = this.fb.group({
     firstName: ['', [Validators.required, Validators.minLength(2)]],
