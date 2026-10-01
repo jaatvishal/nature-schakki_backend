@@ -4,14 +4,12 @@ import { BehaviorSubject, catchError, filter, switchMap, take, throwError } from
 import { AuthService } from '../services/auth.service';
 
 const PUBLIC_URLS = [
-  '/product',
   '/account/login',
   '/account/register',
   '/account/verify-email',
   '/account/resend-verification',
   '/account/forgot-password',
   '/account/reset-password',
-  '/deliverymethods',
 ];
 
 let isRefreshing = false;
