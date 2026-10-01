@@ -1,5 +1,6 @@
 import { CurrencyPipe, DatePipe } from '@angular/common';
-import { ChangeDetectionStrategy, Component, inject, OnInit, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, inject, OnInit, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { MatButton } from '@angular/material/button';
 import { MatIcon } from '@angular/material/icon';
@@ -11,6 +12,7 @@ import {
   orderStatusLabel,
   orderStepIndex,
 } from '../../../shared/constants/order-status';
+import { switchMap, takeWhile, timer } from 'rxjs';
 
 @Component({
   selector: 'app-order-detail',
@@ -21,6 +23,7 @@ import {
 export class OrderDetailComponent implements OnInit {
   private orderService = inject(OrderService);
   private route = inject(ActivatedRoute);
+  private destroyRef = inject(DestroyRef);
 
   order = signal<Order | null>(null);
   loading = signal(true);
@@ -28,7 +31,11 @@ export class OrderDetailComponent implements OnInit {
     const id = this.route.snapshot.paramMap.get('id');
     if (!id) return;
 
-    this.orderService.getOrder(+id).subscribe({
+    timer(0, 10000).pipe(
+      switchMap(() => this.orderService.getOrder(+id)),
+      takeWhile(order => !['Delivered', 'Cancelled', 'Failed', 'Refunded'].includes(order.status), true),
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe({
       next: order => { this.order.set(order); this.loading.set(false); },
       error: () => this.loading.set(false),
     });

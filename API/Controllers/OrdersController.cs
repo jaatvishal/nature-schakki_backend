@@ -92,7 +92,15 @@ public class OrdersController(
         OrderDate = order.OrderDate,
         Status = order.Status.ToString(),
         PaymentMethod = order.PaymentMethod,
-        PaymentStatus = "Pending",
+        PaymentStatus = order.PaymentMethod.Equals("COD", StringComparison.OrdinalIgnoreCase)
+            ? order.Status == OrderStatus.Delivered
+                ? "Paid"
+                : order.Status is OrderStatus.Cancelled or OrderStatus.Failed
+                    ? "Failed"
+                    : "Pending"
+            : order.Status == OrderStatus.PaymentReceived
+                ? "Paid"
+                : "Pending",
         ShipToAddress = new AddressDto
         {
             FirstName = order.ShipToAddress.FirstName,

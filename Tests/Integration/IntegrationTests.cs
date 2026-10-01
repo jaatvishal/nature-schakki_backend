@@ -718,6 +718,20 @@ public class IntegrationTests : IClassFixture<CustomWebApplicationFactory>
         var json = await detail.Content.ReadFromJsonAsync<JsonElement>();
         Assert.Contains(json.GetProperty("timeline").EnumerateArray(),
             x => x.GetProperty("toStatus").GetString() == "Packed");
+
+        foreach (var status in new[] { "Shipped", "OutForDelivery", "Delivered" })
+        {
+            var update = await SendAuthorizedAsync(HttpMethod.Put,
+                $"/api/v1/admin/orders/{orderId}/status", admin.token, new { status });
+            Assert.Equal(System.Net.HttpStatusCode.NoContent, update.StatusCode);
+        }
+
+        var customerOrder = await SendAuthorizedAsync(
+            HttpMethod.Get, $"/api/v1/orders/{orderId}", customer.token);
+        customerOrder.EnsureSuccessStatusCode();
+        var customerJson = await customerOrder.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal("Delivered", customerJson.GetProperty("status").GetString());
+        Assert.Equal("Paid", customerJson.GetProperty("paymentStatus").GetString());
     }
 
     [Fact]
