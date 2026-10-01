@@ -17,12 +17,12 @@
 
           <div class="mt-8 p-5 bg-gray-50 rounded-xl border">
             <div class="flex justify-between items-center text-sm text-gray-500">
-              <span>Unit price</span>
-              <span>{{ product.price | currency: 'INR' }}</span>
+              <span>Price per Kg</span>
+              <span>{{ product.price | currency: 'INR' }} / Kg</span>
             </div>
             <div class="flex justify-between items-center mt-3">
               <div class="flex items-center gap-3">
-                <span class="text-sm font-medium">Quantity</span>
+                <span class="text-sm font-medium">Quantity (Kg)</span>
                 <mat-form-field appearance="outline" class="w-24 !mb-0">
                   <input matInput type="number" min="1" [max]="product.quantityInStock" [(ngModel)]="quantity" />
                 </mat-form-field>

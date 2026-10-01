@@ -10,10 +10,10 @@ import { AuthService } from '../../../core/services/auth.service';
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [MatButton, MatIcon, MatMenu, MatMenuItem, MatMenuTrigger, RouterLink],
   template: `
-    @if (authService.isLoggedIn()) {
+    @if (authService.currentUser(); as user) {
       <button mat-stroked-button [matMenuTriggerFor]="userMenu">
         <mat-icon>person</mat-icon>
-        <span class="hidden sm:inline ml-1">{{ authService.currentUser()?.firstName }}</span>
+        <span class="hidden sm:inline ml-1">{{ user.firstName }}</span>
       </button>
       <mat-menu #userMenu="matMenu">
         <a mat-menu-item routerLink="/account">Profile</a>

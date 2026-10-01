@@ -61,6 +61,8 @@ Stored in `RefreshTokens` table (`AppIdentityDbContext`).
 | GET | `/api/v1/account/current` | Bearer | Returns current user DTO |
 | POST | `/api/v1/account/refresh` | Anonymous | Revokes old refresh token, issues new pair |
 | POST | `/api/v1/account/logout` | Bearer | Revokes all active refresh tokens for user |
+| POST | `/api/v1/account/forgot-password` | Anonymous, rate limited | Always returns the same response and emails a short-lived opaque reset link |
+| POST | `/api/v1/account/reset-password` | Anonymous, rate limited | Consumes a single-use hashed reset token |
 
 ### Refresh Flow
 
@@ -120,3 +122,7 @@ Use the **Authorize** button and enter: `Bearer <your-jwt-token>`
 - SMTP credentials are configuration/environment values (`Email__Smtp__Username`, `Email__Smtp__Password`) and must not be committed.
 - Local development should use .NET User Secrets under the `API` project. `Email:Smtp:Password` must be a Gmail App Password, not the normal Gmail password.
 - Development generates an ephemeral JWT key when none is configured; use `JwtSettings:Key` in User Secrets to keep sessions valid across API restarts. Production requires an explicit key.
+
+## Password reset
+
+Reset links contain only an opaque token. The server stores its SHA-256 hash in `PasswordResetTokens`, expires it after `PasswordReset:ExpiryMinutes` (default 30), revokes older unused tokens when a new link is requested, and marks a token used after a successful reset. Responses do not reveal whether an email exists, and logs record the user id without the token, password, or reset URL. Production requires an HTTPS `ClientUrl`. The forgot/reset endpoints allow 5 requests per 15 minutes per IP.

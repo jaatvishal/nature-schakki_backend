@@ -14,12 +14,12 @@
           <img [src]="item.pictureUrl" [alt]="item.productName" class="w-16 h-16 object-cover rounded" />
           <div class="flex-1 min-w-0">
             <p class="font-medium text-sm truncate">{{ item.productName }}</p>
-            <p class="text-sm text-gray-500">{{ item.price | currency: 'INR' }}</p>
+            <p class="text-sm text-gray-500">{{ item.price | currency: 'INR' }} / Kg</p>
             <div class="flex items-center gap-2 mt-2">
               <button mat-icon-button type="button" (click)="updateQuantity(item.productId, item.quantity - 1)">
                 <mat-icon>remove</mat-icon>
               </button>
-              <span class="text-sm">{{ item.quantity }}</span>
+              <span class="text-sm">{{ item.quantity }} Kg</span>
               <button mat-icon-button type="button" (click)="updateQuantity(item.productId, item.quantity + 1)">
                 <mat-icon>add</mat-icon>
               </button>

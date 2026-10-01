@@ -67,6 +67,8 @@ public class TestEmailService : IEmailService
 
     public string GetOtp(string email) =>
         Regex.Match(_messages[email], @"\b\d{6}\b").Value;
+
+    public string GetMessage(string email) => _messages[email];
 }
 
 public class IntegrationTests : IClassFixture<CustomWebApplicationFactory>
@@ -392,7 +394,7 @@ public class IntegrationTests : IClassFixture<CustomWebApplicationFactory>
         var originalStock = product.QuantityInStock;
         var deliveryId = await context.DeliveryMethods.Select(x => x.Id).FirstAsync();
 
-        await _client.PostAsJsonAsync("/api/v1/cart", new ShoppingCart
+        var cartUpdate = await SendAuthorizedAsync(HttpMethod.Post, "/api/v1/cart", customer.token, new ShoppingCart
         {
             Id = customer.userId.ToString(),
             Items =
@@ -409,6 +411,7 @@ public class IntegrationTests : IClassFixture<CustomWebApplicationFactory>
                 }
             ]
         });
+        cartUpdate.EnsureSuccessStatusCode();
 
         var checkout = await SendAuthorizedAsync(HttpMethod.Post, "/api/v1/orders", customer.token, new
         {
@@ -434,8 +437,9 @@ public class IntegrationTests : IClassFixture<CustomWebApplicationFactory>
         context.ChangeTracker.Clear();
         Assert.Equal(originalStock - 2, (await context.Products.FindAsync(product.Id))!.QuantityInStock);
 
-        var cart = await _client.GetFromJsonAsync<ShoppingCart>(
-            $"/api/v1/cart?id={customer.userId}");
+        var cartResponse = await SendAuthorizedAsync(HttpMethod.Get, $"/api/v1/cart?id={customer.userId}", customer.token);
+        cartResponse.EnsureSuccessStatusCode();
+        var cart = await cartResponse.Content.ReadFromJsonAsync<ShoppingCart>();
         Assert.Empty(cart!.Items);
 
         var forbiddenOrder = await SendAuthorizedAsync(
@@ -461,7 +465,7 @@ public class IntegrationTests : IClassFixture<CustomWebApplicationFactory>
         var beforeOrders = await context.Orders.CountAsync();
         var deliveryId = await context.DeliveryMethods.Select(x => x.Id).FirstAsync();
 
-        await _client.PostAsJsonAsync("/api/v1/cart", new ShoppingCart
+        var cartResponse = await SendAuthorizedAsync(HttpMethod.Post, "/api/v1/cart", customer.token, new ShoppingCart
         {
             Id = customer.userId.ToString(),
             Items =
@@ -478,6 +482,7 @@ public class IntegrationTests : IClassFixture<CustomWebApplicationFactory>
                 }
             ]
         });
+        Assert.Equal(System.Net.HttpStatusCode.BadRequest, cartResponse.StatusCode);
 
         var response = await SendAuthorizedAsync(HttpMethod.Post, "/api/v1/orders", customer.token, new
         {
@@ -730,6 +735,86 @@ public class IntegrationTests : IClassFixture<CustomWebApplicationFactory>
         Assert.Equal(System.Net.HttpStatusCode.NoContent, deactivate.StatusCode);
         var blocked = await SendAuthorizedAsync(HttpMethod.Get, "/api/v1/orders", customer.token);
         Assert.Equal(System.Net.HttpStatusCode.Unauthorized, blocked.StatusCode);
+    }
+
+    [Fact]
+    public async Task Cart_IgnoresClientPrice_AndRejectsInvalidQuantity()
+    {
+        var id = $"guest-{Guid.NewGuid():N}";
+        var priced = await _client.PostAsJsonAsync("/api/v1/cart", new ShoppingCart
+        {
+            Id = id,
+            Items =
+            [
+                new CartItem
+                {
+                    ProductId = 1, ProductName = "Tampered", Price = 1, Quantity = 2,
+                    PictureUrl = "/x", Brand = "X", Type = "X"
+                },
+                new CartItem
+                {
+                    ProductId = 1, ProductName = "Duplicate", Price = 1, Quantity = 1,
+                    PictureUrl = "/x", Brand = "X", Type = "X"
+                }
+            ]
+        });
+        priced.EnsureSuccessStatusCode();
+        var cart = await priced.Content.ReadFromJsonAsync<ShoppingCart>();
+        Assert.Single(cart!.Items);
+        Assert.Equal(3, cart.Items[0].Quantity);
+        Assert.Equal(50, cart.Items[0].Price);
+
+        var invalid = await _client.PostAsJsonAsync("/api/v1/cart", new ShoppingCart
+        {
+            Id = id,
+            Items =
+            [
+                new CartItem
+                {
+                    ProductId = 1, ProductName = "Bad", Price = 50, Quantity = 0,
+                    PictureUrl = "/x", Brand = "X", Type = "X"
+                }
+            ]
+        });
+        Assert.Equal(System.Net.HttpStatusCode.BadRequest, invalid.StatusCode);
+    }
+
+    [Fact]
+    public async Task PasswordReset_IsSingleUse_Expiring_AndDoesNotRevealAccounts()
+    {
+        var user = await CreateVerifiedUserAsync();
+        string email;
+        using (var scope = _factory.Services.CreateScope())
+        {
+            email = (await scope.ServiceProvider.GetRequiredService<UserManager<AppUser>>()
+                .FindByIdAsync(user.userId.ToString()))!.Email!;
+        }
+
+        var first = await _client.PostAsJsonAsync("/api/v1/account/forgot-password", new { email });
+        var missing = await _client.PostAsJsonAsync("/api/v1/account/forgot-password", new { email = "missing@test.com" });
+        Assert.Equal(first.StatusCode, missing.StatusCode);
+        Assert.DoesNotContain("token", await missing.Content.ReadAsStringAsync(), StringComparison.OrdinalIgnoreCase);
+
+        var emailService = _factory.Services.GetRequiredService<TestEmailService>();
+        var firstToken = Uri.UnescapeDataString(Regex.Match(emailService.GetMessage(email), @"token=([^&\s]+)").Groups[1].Value);
+        var second = await _client.PostAsJsonAsync("/api/v1/account/forgot-password", new { email });
+        second.EnsureSuccessStatusCode();
+        var secondToken = Uri.UnescapeDataString(Regex.Match(emailService.GetMessage(email), @"token=([^&\s]+)").Groups[1].Value);
+
+        Assert.Equal(System.Net.HttpStatusCode.BadRequest,
+            (await _client.PostAsJsonAsync("/api/v1/account/reset-password", new { token = firstToken, newPassword = "NewPass1!" })).StatusCode);
+        Assert.Equal(System.Net.HttpStatusCode.BadRequest,
+            (await _client.PostAsJsonAsync("/api/v1/account/reset-password", new { token = secondToken + "x", newPassword = "NewPass1!" })).StatusCode);
+
+        var reset = await _client.PostAsJsonAsync("/api/v1/account/reset-password", new { token = secondToken, newPassword = "NewPass1!" });
+        reset.EnsureSuccessStatusCode();
+        Assert.Equal(System.Net.HttpStatusCode.BadRequest,
+            (await _client.PostAsJsonAsync("/api/v1/account/reset-password", new { token = secondToken, newPassword = "NewPass1!" })).StatusCode);
+
+        Assert.Equal(System.Net.HttpStatusCode.Unauthorized,
+            (await _client.PostAsJsonAsync("/api/v1/account/login", new { email, password = "Password1!" })).StatusCode);
+        Assert.Equal(System.Net.HttpStatusCode.OK,
+            (await _client.PostAsJsonAsync("/api/v1/account/login", new { email, password = "NewPass1!" })).StatusCode);
     }
 
     [Fact]

@@ -28,6 +28,20 @@ describe('CartService', () => {
     expect(localStorage.getItem('guestCartId')).toBeTruthy();
   });
 
+  it('counts distinct products instead of kilograms', () => {
+    const cart = {
+      id: '1',
+      items: [
+        { productId: 1, productName: 'A', price: 110, quantity: 2, pictureUrl: '/a', brand: 'B', type: 'T' },
+        { productId: 2, productName: 'B', price: 50, quantity: 3, pictureUrl: '/b', brand: 'B', type: 'T' },
+      ],
+    };
+    service.getCart().subscribe();
+    httpMock.expectOne(r => r.method === 'GET').flush(cart);
+    expect(service.itemCount()).toBe(2);
+    expect(service.subtotal()).toBe(110 * 2 + 50 * 3);
+  });
+
   it('should fetch cart', () => {
     const cart = { id: 'buyer-1', items: [] };
 

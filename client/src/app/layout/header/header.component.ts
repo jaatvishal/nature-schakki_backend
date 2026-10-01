@@ -8,7 +8,6 @@ import { getEnabledHeaderItems, HeaderItemId } from './header.config';
 import { HeaderCartSummaryComponent } from './header-cart-summary/header-cart-summary.component';
 import { HeaderLogoComponent } from './header-logo/header-logo.component';
 import { HeaderNavComponent } from './header-nav/header-nav.component';
-import { HeaderSearchComponent } from './header-search/header-search.component';
 import { HeaderUserMenuComponent } from './header-user-menu/header-user-menu.component';
 
 @Component({
@@ -17,7 +16,6 @@ import { HeaderUserMenuComponent } from './header-user-menu/header-user-menu.com
     MatProgressBar,
     HeaderLogoComponent,
     HeaderNavComponent,
-    HeaderSearchComponent,
     HeaderCartSummaryComponent,
     HeaderUserMenuComponent,
     CartDrawerComponent,

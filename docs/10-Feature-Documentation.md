@@ -34,7 +34,7 @@ End-to-end feature reference for the Natures Chakki e-commerce platform.
 | `POST /api/v1/cart` | Create/update cart |
 | `DELETE /api/v1/cart?id={cartId}` | Clear cart |
 
-Cart stored in Memory or Redis (`CacheProvider`). Not in SQL.
+Cart stored in Memory or Redis (`CacheProvider`). Not in SQL. `Product.Price` is the authoritative price per kilogram. The API recalculates every line as `price per kg × quantity kg`, ignores client-submitted prices, merges duplicate products, and validates quantity using `Cart` configuration. The header badge counts distinct products, not total kilograms.
 
 **Frontend:**
 

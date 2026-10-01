@@ -20,7 +20,7 @@
               }
               <p class="text-sm text-gray-500">Payment: {{ order.paymentMethod }} ({{ order.paymentStatus }})</p>
               @for (item of order.orderItems; track item.productId) {
-                <p class="text-sm text-gray-600">{{ item.productName }} × {{ item.quantity }}</p>
+                <p class="text-sm text-gray-600">{{ item.productName }} × {{ item.quantity }} Kg</p>
               }
             </div>
             <div class="text-right">

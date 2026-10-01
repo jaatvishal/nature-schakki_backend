@@ -26,6 +26,20 @@ public class EmailVerificationOptions
     public int ResendCooldownSeconds { get; set; } = 60;
 }
 
+public class PasswordResetOptions
+{
+    public const string SectionName = "PasswordReset";
+    public int ExpiryMinutes { get; set; } = 30;
+}
+
+public class CartOptions
+{
+    public const string SectionName = "Cart";
+    public int MinimumQuantityKg { get; set; } = 1;
+    public int MaximumQuantityKg { get; set; } = 100;
+    public int IncrementKg { get; set; } = 1;
+}
+
 public class FileStorageOptions
 {
     public const string SectionName = "FileStorage";

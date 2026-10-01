@@ -17,7 +17,7 @@ import { SnackbarService } from '../../../core/services/snackbar.service';
       <form [formGroup]="form" (ngSubmit)="submit()" class="flex flex-col gap-4">
         <mat-form-field appearance="outline">
           <mat-label>New Password</mat-label>
-          <input matInput type="password" formControlName="password" />
+          <input matInput type="password" formControlName="password" autocomplete="new-password" />
         </mat-form-field>
         <button mat-flat-button color="primary" type="submit" [disabled]="form.invalid">Reset Password</button>
       </form>
@@ -31,19 +31,20 @@ export class ResetPasswordComponent implements OnInit {
   private route = inject(ActivatedRoute);
   private router = inject(Router);
   private snackbar = inject(SnackbarService);
-  private email = '';
   private token = '';
 
-  form = this.fb.group({ password: ['', [Validators.required, Validators.minLength(6)]] });
+  form = this.fb.group({
+    password: ['', [Validators.required, Validators.minLength(8), Validators.pattern(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).+$/)]],
+  });
 
   ngOnInit() {
-    this.email = this.route.snapshot.queryParams['email'] ?? '';
     this.token = this.route.snapshot.queryParams['token'] ?? '';
+    this.router.navigate([], { relativeTo: this.route, queryParams: {}, replaceUrl: true });
   }
 
   submit() {
-    if (this.form.invalid || !this.email || !this.token) return;
-    this.auth.resetPassword(this.email, this.token, this.form.value.password!).subscribe({
+    if (this.form.invalid || !this.token) return;
+    this.auth.resetPassword(this.token, this.form.value.password!).subscribe({
       next: () => {
         this.snackbar.success('Password reset successful');
         this.router.navigateByUrl('/auth/login');

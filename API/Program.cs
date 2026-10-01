@@ -110,13 +110,22 @@ try
 
     builder.Services.AddRateLimiter(options =>
     {
+        var testing = builder.Environment.IsEnvironment("Testing");
         options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context =>
             RateLimitPartition.GetFixedWindowLimiter(
                 partitionKey: context.User.Identity?.Name ?? context.Request.Headers.Host.ToString(),
                 factory: _ => new FixedWindowRateLimiterOptions
                 {
-                    PermitLimit = 100,
+                    PermitLimit = testing ? 10_000 : 100,
                     Window = TimeSpan.FromMinutes(1)
+                }));
+        options.AddPolicy("password-reset", context =>
+            RateLimitPartition.GetFixedWindowLimiter(
+                context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+                _ => new FixedWindowRateLimiterOptions
+                {
+                    PermitLimit = testing ? 10_000 : 5,
+                    Window = TimeSpan.FromMinutes(15)
                 }));
         options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
     });
@@ -127,6 +136,12 @@ try
 
     var app = builder.Build();
 
+    app.Use(async (context, next) =>
+    {
+        context.Response.Headers["Referrer-Policy"] = "no-referrer";
+        context.Response.Headers["X-Content-Type-Options"] = "nosniff";
+        await next();
+    });
     app.UseSerilogRequestLogging();
     app.UseMiddleware<ExceptionMiddleware>();
 

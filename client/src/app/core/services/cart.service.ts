@@ -4,7 +4,7 @@ import { Router } from '@angular/router';
 import { Observable, switchMap, tap } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { AuthService } from './auth.service';
-import { CartItem, ShoppingCart } from '../../shared/models/cart';
+import { ShoppingCart } from '../../shared/models/cart';
 import { Product } from '../../shared/models/product';
 
 const GUEST_ID_KEY = 'guestCartId';
@@ -18,7 +18,7 @@ export class CartService {
   private cartSignal = signal<ShoppingCart | null>(null);
 
   cart = computed(() => this.cartSignal());
-  itemCount = computed(() => this.cartSignal()?.items.reduce((s, i) => s + i.quantity, 0) ?? 0);
+  itemCount = computed(() => this.cartSignal()?.items.length ?? 0);
   subtotal = computed(() => this.cartSignal()?.items.reduce((s, i) => s + i.price * i.quantity, 0) ?? 0);
 
   getCartId(): string {
@@ -56,27 +56,23 @@ export class CartService {
       this.router.navigate(['/auth/login'], { queryParams: { returnUrl: this.router.url } });
       throw new Error('login required');
     }
-    const cart = this.cartSignal() ?? { id: this.getCartId(), items: [] };
-    const existing = cart.items.find(i => i.productId === product.id);
-    const items: CartItem[] = existing
-      ? cart.items.map(i => i.productId === product.id ? { ...i, quantity: i.quantity + quantity } : i)
-      : [...cart.items, {
-          productId: product.id, productName: product.name, price: product.price, quantity,
-          pictureUrl: product.pictureUrl, brand: product.brand, type: product.type ?? '',
-        }];
-    return this.setCart({ id: this.getCartId(), items });
+    if (!Number.isInteger(quantity) || quantity < 1) throw new Error('invalid quantity');
+    return this.changeItem(product.id, quantity, 'add');
   }
 
   updateQuantity(productId: number, quantity: number) {
-    const cart = this.cartSignal();
-    if (!cart) return;
-    const items = quantity <= 0 ? cart.items.filter(i => i.productId !== productId)
-      : cart.items.map(i => i.productId === productId ? { ...i, quantity } : i);
-    return this.setCart({ ...cart, id: this.getCartId(), items });
+    if (!Number.isInteger(quantity) || quantity < 1) return this.removeItem(productId);
+    return this.changeItem(productId, quantity, 'set');
+  }
+
+  private changeItem(productId: number, quantityKg: number, mode: 'add' | 'set') {
+    return this.http.post<ShoppingCart>(`${this.baseUrl}/items`, { productId, quantityKg, mode })
+      .pipe(tap(cart => this.cartSignal.set(cart)));
   }
 
   removeItem(productId: number) {
-    return this.updateQuantity(productId, 0);
+    return this.http.delete<ShoppingCart>(`${this.baseUrl}/items/${productId}`)
+      .pipe(tap(cart => this.cartSignal.set(cart)));
   }
 
   initCart() {

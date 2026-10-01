@@ -41,7 +41,7 @@
     @for (item of o.orderItems; track item.productId) {
       <div class="flex gap-4 items-center border rounded-lg p-3 mb-2">
         <img [src]="item.pictureUrl" class="w-16 h-16 object-cover rounded" [alt]="item.productName" />
-        <div class="flex-1"><p class="font-medium">{{ item.productName }}</p><p class="text-sm text-gray-500">Qty: {{ item.quantity }}</p></div>
+        <div class="flex-1"><p class="font-medium">{{ item.productName }}</p><p class="text-sm text-gray-500">{{ item.quantity }} Kg · {{ item.price | currency:'INR' }} / Kg</p></div>
         <p class="font-semibold">{{ item.price * item.quantity | currency: 'INR' }}</p>
       </div>
     }
