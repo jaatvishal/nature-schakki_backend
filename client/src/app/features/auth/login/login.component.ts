@@ -38,9 +38,14 @@ export class LoginComponent implements OnInit {
     if (this.loginForm.invalid) return;
     this.authService.login(this.loginForm.getRawValue() as { email: string; password: string }).subscribe({
       next: () => {
+        if (this.authService.isAdmin()) {
+          this.snackbar.success('Welcome back, Admin!');
+          this.router.navigateByUrl('/admin');
+          return;
+        }
         this.cartService.mergeGuestCartOnLogin().subscribe({
           next: () => {
-            this.snackbar.success(this.authService.isAdmin() ? 'Welcome back, Admin!' : 'Welcome back!');
+            this.snackbar.success('Welcome back!');
             const returnUrl = this.route.snapshot.queryParams['returnUrl'];
             this.router.navigateByUrl(returnUrl || this.authService.getPostLoginRoute());
           },

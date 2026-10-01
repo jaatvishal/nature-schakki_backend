@@ -51,7 +51,7 @@ public class AdminProductUpsertDto
     public string Name { get; set; } = string.Empty;
     [Required, StringLength(2000)]
     public string Description { get; set; } = string.Empty;
-    [Required, StringLength(50)]
+    [StringLength(50)]
     public string Sku { get; set; } = string.Empty;
     [Required, StringLength(100)]
     public string Brand { get; set; } = string.Empty;

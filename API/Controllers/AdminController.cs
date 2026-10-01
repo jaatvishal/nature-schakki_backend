@@ -211,7 +211,7 @@ public class AdminController(
 
     [HttpGet("products")]
     public async Task<ActionResult<PagedResult<AdminProductDto>>> GetProducts(
-        string? search = null, int? categoryId = null, bool? active = null, bool includeArchived = false,
+        string? search = null, int? categoryId = null, bool? active = null, bool includeArchived = true,
         string sort = "name", int page = 1, int pageSize = 20)
     {
         (page, pageSize) = NormalizePage(page, pageSize);
@@ -239,7 +239,8 @@ public class AdminController(
     [HttpPost("products")]
     public async Task<ActionResult<AdminProductDto>> CreateProduct(AdminProductUpsertDto dto)
     {
-        if (await context.Products.AnyAsync(x => x.Sku == dto.Sku)) return Conflict("SKU already exists.");
+        var sku = string.IsNullOrWhiteSpace(dto.Sku) ? GenerateSku() : dto.Sku.Trim();
+        if (await context.Products.AnyAsync(x => x.Sku == sku)) return Conflict("Product identifier already exists.");
         await using var transaction = context.Database.IsRelational()
             ? await context.Database.BeginTransactionAsync(IsolationLevel.Serializable)
             : null;
@@ -247,7 +248,7 @@ public class AdminController(
         var brand = await GetOrCreateBrand(dto.Brand);
         var product = new Product
         {
-            Name = dto.Name.Trim(), Description = dto.Description.Trim(), Sku = dto.Sku.Trim(),
+            Name = dto.Name.Trim(), Description = dto.Description.Trim(), Sku = sku,
             Price = dto.Price, PictureUrl = dto.PictureUrl, Type = category.Name, Brand = brand.Name,
             QuantityInStock = dto.Stock, Unit = dto.Unit.Trim(), IsActive = dto.IsActive,
             CategoryId = category.Id, BrandId = brand.Id
@@ -271,7 +272,8 @@ public class AdminController(
     {
         var product = await context.Products.Include(x => x.Inventory).FirstOrDefaultAsync(x => x.Id == id);
         if (product == null) return NotFound();
-        if (await context.Products.AnyAsync(x => x.Id != id && x.Sku == dto.Sku)) return Conflict("SKU already exists.");
+        var sku = string.IsNullOrWhiteSpace(dto.Sku) ? product.Sku : dto.Sku.Trim();
+        if (await context.Products.AnyAsync(x => x.Id != id && x.Sku == sku)) return Conflict("Product identifier already exists.");
         await using var transaction = context.Database.IsRelational()
             ? await context.Database.BeginTransactionAsync(IsolationLevel.Serializable)
             : null;
@@ -281,7 +283,7 @@ public class AdminController(
         var priceChanged = previousPrice != dto.Price;
         product.Name = dto.Name.Trim();
         product.Description = dto.Description.Trim();
-        product.Sku = dto.Sku.Trim();
+        product.Sku = sku;
         product.Price = dto.Price;
         product.PictureUrl = dto.PictureUrl;
         product.Type = category.Name;
@@ -337,7 +339,7 @@ public class AdminController(
 
     [HttpPost("products/images")]
     [RequestSizeLimit(5_242_880)]
-    public async Task<ActionResult<object>> UploadProductImage(IFormFile file)
+    public async Task<ActionResult<object>> UploadProductImage([FromForm] IFormFile file)
     {
         if (file.Length == 0 || file.Length > 5_242_880) return BadRequest("Image must be between 1 byte and 5 MB.");
         await using var stream = file.OpenReadStream();
@@ -735,6 +737,9 @@ public class AdminController(
 
     private static (int Page, int PageSize) NormalizePage(int page, int pageSize) =>
         (Math.Max(1, page), Math.Clamp(pageSize, 1, 100));
+
+    private static string GenerateSku() =>
+        $"NC-{Guid.NewGuid():N}"[..13].ToUpperInvariant();
 
     private static async Task<string?> DetectImageExtension(Stream stream)
     {

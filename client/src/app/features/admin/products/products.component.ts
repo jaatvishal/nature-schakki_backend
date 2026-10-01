@@ -1,4 +1,5 @@
 import { CurrencyPipe } from '@angular/common';
+import { HttpErrorResponse } from '@angular/common/http';
 import { ChangeDetectionStrategy, Component, inject, OnInit, signal } from '@angular/core';
 import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButton } from '@angular/material/button';
@@ -26,6 +27,8 @@ export class AdminProductsComponent implements OnInit {
   showForm = signal(false);
   editingId = signal<number | undefined>(undefined);
   uploading = signal(false);
+  loading = signal(false);
+  loadError = signal('');
   search = '';
   categoryFilter = 0;
   sort = 'name';
@@ -36,7 +39,7 @@ export class AdminProductsComponent implements OnInit {
   productForm = this.fb.group({
     name: ['', Validators.required],
     description: ['', Validators.required],
-    sku: ['', Validators.required],
+    sku: [''],
     brand: ['', Validators.required],
     category: ['', Validators.required],
     price: [0, [Validators.required, Validators.min(0.01)]],
@@ -51,9 +54,21 @@ export class AdminProductsComponent implements OnInit {
     this.admin.getCategories('', 1, 100).subscribe(x => this.categories.set(x.items));
   }
   loadProducts() {
+    this.loading.set(true);
+    this.loadError.set('');
     const active = this.statusFilter === '' ? undefined : this.statusFilter === 'active';
     this.admin.getProducts(this.search, this.categoryFilter || undefined, this.page(), 20, this.sort, active)
-      .subscribe(x => { this.products.set(x.items); this.total.set(x.totalCount); });
+      .subscribe({
+        next: x => {
+          this.products.set(x.items);
+          this.total.set(x.totalCount);
+          this.loading.set(false);
+        },
+        error: (error: HttpErrorResponse) => {
+          this.loadError.set(error.error?.detail || 'Unable to load products. Please refresh and try again.');
+          this.loading.set(false);
+        },
+      });
   }
   go(page: number) { this.page.set(page); this.loadProducts(); }
   edit(product: AdminProduct) {
@@ -76,7 +91,11 @@ export class AdminProductsComponent implements OnInit {
     const request: Observable<unknown> = this.editingId()
       ? this.admin.updateProduct(this.editingId()!, value)
       : this.admin.createProduct(value);
-    request.subscribe({ next: () => { this.snackbar.success('Product saved'); this.reset(); this.loadProducts(); }, error: () => this.snackbar.error('Unable to save product') });
+    request.subscribe({
+      next: () => { this.snackbar.success('Product saved'); this.reset(); this.loadProducts(); },
+      error: (error: HttpErrorResponse) =>
+        this.snackbar.error(error.error?.detail || this.validationMessage(error) || 'Unable to save product'),
+    });
   }
   upload(event: Event) {
     const file = (event.target as HTMLInputElement).files?.[0];
@@ -88,7 +107,10 @@ export class AdminProductsComponent implements OnInit {
     this.uploading.set(true);
     this.admin.uploadProductImage(file).subscribe({
       next: x => { this.productForm.patchValue({ pictureUrl: x.url }); this.uploading.set(false); },
-      error: () => { this.snackbar.error('Image upload failed'); this.uploading.set(false); },
+      error: (error: HttpErrorResponse) => {
+        this.snackbar.error(error.error?.detail || error.error?.title || 'Image upload failed');
+        this.uploading.set(false);
+      },
     });
   }
   toggle(product: AdminProduct) {
@@ -96,5 +118,10 @@ export class AdminProductsComponent implements OnInit {
   }
   archive(product: AdminProduct) {
     this.admin.archiveProduct(product.id).subscribe(() => this.loadProducts());
+  }
+
+  private validationMessage(error: HttpErrorResponse): string {
+    const errors = error.error?.errors as Record<string, string[]> | undefined;
+    return errors ? Object.values(errors).flat().join(' ') : '';
   }
 }

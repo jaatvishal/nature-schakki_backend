@@ -56,6 +56,8 @@ export const routes: Routes = [
   {
     path: 'admin',
     canActivate: [adminGuard],
+    loadComponent: () =>
+      import('./features/admin/admin-shell.component').then(m => m.AdminShellComponent),
     children: [
       { path: '', loadComponent: () => import('./features/admin/dashboard/dashboard.component').then(m => m.DashboardComponent) },
       { path: 'users', loadComponent: () => import('./features/admin/users/users.component').then(m => m.AdminUsersComponent) },
