@@ -37,6 +37,7 @@ describe('AuthService', () => {
       refreshToken: 'refresh-token',
     };
 
+    expect(service.isLoggedIn()).toBe(false);
     service.login({ email: 'test@test.com', password: 'Pass@123' }).subscribe();
 
     const req = httpMock.expectOne(`${environment.apiUrl}/v1/account/login`);

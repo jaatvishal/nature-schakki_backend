@@ -1,6 +1,7 @@
-import { ChangeDetectionStrategy, Component } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { MatIcon } from '@angular/material/icon';
+import { AuthService } from '../../core/services/auth.service';
 
 @Component({
   selector: 'app-footer',
@@ -18,7 +19,9 @@ import { MatIcon } from '@angular/material/icon';
           <ul class="space-y-2 text-sm">
             <li><a routerLink="/shop" class="hover:text-amber-400">Shop</a></li>
             <li><a routerLink="/contact" class="hover:text-amber-400">Contact</a></li>
-            <li><a routerLink="/auth/login" class="hover:text-amber-400">Login</a></li>
+            @if (!auth.currentUser()) {
+              <li><a routerLink="/auth/login" class="hover:text-amber-400">Login</a></li>
+            }
           </ul>
         </div>
         <div>
@@ -42,6 +45,7 @@ import { MatIcon } from '@angular/material/icon';
   `,
 })
 export class FooterComponent {
+  auth = inject(AuthService);
   year = new Date().getFullYear();
   socials = [
     { icon: 'facebook', label: 'Facebook', url: 'https://facebook.com/natureschakki' },

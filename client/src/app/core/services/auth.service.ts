@@ -17,7 +17,10 @@ export class AuthService {
   private userSignal = signal<User | null>(this.loadUserFromStorage());
 
   currentUser = computed(() => this.userSignal());
-  isLoggedIn = computed(() => !!this.getToken() && !!this.userSignal());
+  isLoggedIn = computed(() => {
+    const user = this.userSignal();
+    return !!user && !!this.getToken();
+  });
   isAdmin = computed(() => this.userSignal()?.roles?.includes('Admin') ?? false);
 
   getUserId(): number | null {
