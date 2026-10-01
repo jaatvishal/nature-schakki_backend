@@ -105,6 +105,7 @@ export class AuthService {
       displayName: response.displayName,
       firstName: response.firstName || parts[0] || response.email,
       lastName: response.lastName || (parts[1] ?? ''),
+      phoneNumber: response.phoneNumber,
       roles: response.roles ?? [],
       token: response.token,
     };

@@ -214,6 +214,7 @@ public class AccountController(
             DisplayName = user.DisplayName,
             FirstName = parts.Length > 0 ? parts[0] : user.DisplayName,
             LastName = parts.Length > 1 ? parts[1] : string.Empty,
+            PhoneNumber = user.PhoneNumber,
             Roles = roles.ToList()
         };
 

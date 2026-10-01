@@ -4,6 +4,7 @@ export type User = {
   displayName?: string;
   firstName: string;
   lastName: string;
+  phoneNumber?: string;
   roles: string[];
   token?: string;
 };
@@ -26,6 +27,7 @@ export type AuthResponse = {
   firstName?: string;
   lastName?: string;
   displayName?: string;
+  phoneNumber?: string;
   roles: string[];
   token: string;
   refreshToken?: string;

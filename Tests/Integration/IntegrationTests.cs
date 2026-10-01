@@ -413,7 +413,7 @@ public class IntegrationTests : IClassFixture<CustomWebApplicationFactory>
         });
         cartUpdate.EnsureSuccessStatusCode();
 
-        var checkout = await SendAuthorizedAsync(HttpMethod.Post, "/api/v1/orders", customer.token, new
+        var checkoutRequest = new
         {
             deliveryMethodId = deliveryId,
             paymentMethod = "COD",
@@ -427,8 +427,13 @@ public class IntegrationTests : IClassFixture<CustomWebApplicationFactory>
                 zipCode = "123456",
                 country = "India"
             }
-        });
-        checkout.EnsureSuccessStatusCode();
+        };
+        var attempts = await Task.WhenAll(
+            SendAuthorizedAsync(HttpMethod.Post, "/api/v1/orders", customer.token, checkoutRequest),
+            SendAuthorizedAsync(HttpMethod.Post, "/api/v1/orders", customer.token, checkoutRequest));
+        Assert.Single(attempts, x => x.IsSuccessStatusCode);
+        Assert.Single(attempts, x => x.StatusCode == System.Net.HttpStatusCode.BadRequest);
+        var checkout = attempts.Single(x => x.IsSuccessStatusCode);
         var order = await checkout.Content.ReadFromJsonAsync<JsonElement>();
         var orderId = order.GetProperty("id").GetInt32();
         Assert.Equal(product.Price, order.GetProperty("orderItems")[0].GetProperty("price").GetDecimal());

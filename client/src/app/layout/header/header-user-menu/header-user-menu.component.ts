@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { MatButton } from '@angular/material/button';
+import { MatButton, MatIconButton } from '@angular/material/button';
 import { MatIcon } from '@angular/material/icon';
 import { MatMenu, MatMenuItem, MatMenuTrigger } from '@angular/material/menu';
 import { AuthService } from '../../../core/services/auth.service';
@@ -8,12 +8,11 @@ import { AuthService } from '../../../core/services/auth.service';
 @Component({
   selector: 'app-header-user-menu',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [MatButton, MatIcon, MatMenu, MatMenuItem, MatMenuTrigger, RouterLink],
+  imports: [MatButton, MatIconButton, MatIcon, MatMenu, MatMenuItem, MatMenuTrigger, RouterLink],
   template: `
     @if (authService.currentUser(); as user) {
-      <button mat-stroked-button [matMenuTriggerFor]="userMenu">
+      <button mat-icon-button [matMenuTriggerFor]="userMenu" class="!rounded-full !bg-amber-50" [attr.aria-label]="'Open profile menu for ' + user.firstName">
         <mat-icon>person</mat-icon>
-        <span class="hidden sm:inline ml-1">{{ user.firstName }}</span>
       </button>
       <mat-menu #userMenu="matMenu">
         <a mat-menu-item routerLink="/account">Profile</a>
