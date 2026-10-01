@@ -20,6 +20,7 @@ Log.Logger = new LoggerConfiguration()
 try
 {
     var builder = WebApplication.CreateBuilder(args);
+    Directory.CreateDirectory(Path.Combine(builder.Environment.ContentRootPath, "wwwroot", "uploads"));
 
     builder.Host.UseSerilog((context, config) =>
         config.ReadFrom.Configuration(context.Configuration).WriteTo.Console());
