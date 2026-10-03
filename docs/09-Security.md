@@ -63,6 +63,8 @@ Forgot/reset password additionally allows 5 requests per 15 minutes per source I
 
 Email OTP values are generated with a cryptographic RNG, stored only as salted hashes, replaced on resend, and never logged. SMTP credentials must be supplied through environment configuration or Key Vault.
 
+JWT, refresh-token, OTP and password-reset expiration is always calculated in UTC. IST conversion is display/report-boundary only and cannot extend or shorten security lifetimes.
+
 ## Error Handling
 
 `API/Middleware/ExceptionMiddleware.cs` maps exceptions to consistent JSON responses without leaking stack traces in production:

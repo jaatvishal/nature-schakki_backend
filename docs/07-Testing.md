@@ -41,7 +41,8 @@ Tests/
 ├── Unit/
 │   ├── CouponServiceTests.cs      (4 tests)
 │   ├── InventoryServiceTests.cs   (3 tests)
-│   └── OrderServiceTests.cs       (3 tests)
+│   ├── OrderServiceTests.cs       (3 tests)
+│   └── IndiaTimeZoneTests.cs      (2 tests)
 ├── Integration/
 │   └── IntegrationTests.cs        (25 tests)
 └── GlobalUsings.cs
@@ -51,11 +52,11 @@ Tests/
 
 | Suite | Count | Coverage |
 |-------|------:|----------|
-| Backend unit | 10 | inventory reserve/adjust, coupon rules, empty order, cancellation and invalid transitions |
+| Backend unit | 12 | inventory, coupons, orders, UTC/IST conversion and UTC JSON normalization |
 | Backend integration | 25 | catalog, OTP registration, login, secure reset, claim-owned cart, trusted prices/kg validation, transactional COD checkout, cross-user authorization, Admin CRUD/upload/inventory/audit/payment/status, health, SPA fallback and API 404 |
-| Angular | 16 | app boot, auth/admin guards, JWT interceptor, reactive login/logout/refresh state, distinct cart count/totals, finalized checkout/duplicate click, Shop search reset |
+| Angular | 17 | app/auth/cart/checkout/search behavior plus centralized IST formatting |
 
-Total: **35 backend tests + 16 Angular tests**.
+Total: **37 backend tests + 17 Angular tests**.
 
 The integration factory uses EF InMemory and a temporary Angular `index.html`; Azure SQL/Redis/Blob/SMTP require deployment smoke tests.
 

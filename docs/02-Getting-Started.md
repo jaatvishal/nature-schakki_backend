@@ -151,7 +151,7 @@ dotnet test Tests/Tests.csproj
 cd client && npm test -- --watch=false
 ```
 
-Current baseline: 35 backend tests and 16 Angular tests.
+Current baseline: 37 backend tests and 17 Angular tests.
 
 ## Troubleshooting
 

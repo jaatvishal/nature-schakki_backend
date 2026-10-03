@@ -113,6 +113,7 @@ Set these under **App Service → Configuration → Application settings** or th
 ```text
 ASPNETCORE_ENVIRONMENT=Production
 SCM_DO_BUILD_DURING_DEPLOYMENT=false
+ApplicationTimeZone__Id=Asia/Kolkata
 
 ConnectionStrings__DefaultConnection=<Azure SQL connection string>
 

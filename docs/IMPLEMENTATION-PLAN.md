@@ -132,9 +132,9 @@ Current customer flow:
 
 | Item | Status | Notes |
 |------|--------|-------|
-| Unit tests (inventory, orders, coupons) | ✅ Complete | 10 tests |
+| Unit tests (inventory, orders, coupons, timezone) | ✅ Complete | 12 tests |
 | Integration tests (API) | ✅ Complete | 25 tests |
-| Angular tests | ✅ Complete | 16 tests |
+| Angular tests | ✅ Complete | 17 tests |
 | Test factory (in-memory DB) | ✅ Complete | `CustomWebApplicationFactory` |
 
 ---

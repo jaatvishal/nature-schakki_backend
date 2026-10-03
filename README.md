@@ -146,7 +146,7 @@ dotnet test Tests/Tests.csproj
 cd client && npm test
 ```
 
-35 backend tests and 16 Angular tests currently pass. See [docs/07-Testing.md](docs/07-Testing.md).
+37 backend tests and 17 Angular tests currently pass. See [docs/07-Testing.md](docs/07-Testing.md).
 
 ## Documentation
 
