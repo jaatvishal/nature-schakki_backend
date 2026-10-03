@@ -82,7 +82,7 @@ Use double-underscore notation for nested config in App Service / containers:
 | `ASPNETCORE_ENVIRONMENT` | — | Yes (`Production`) |
 | `ConnectionStrings__DefaultConnection` | SQL connection | Yes |
 | `ConnectionStrings__Redis` | Redis connection | If `CacheProvider=Redis` |
-| `CacheProvider` | `Memory` or `Redis` | Yes (use `Redis` in prod) |
+| `CacheProvider` | `Memory` default; `Redis` optional for scale/restart persistence | Yes |
 | `JwtSettings__Key` | Signing key | Yes |
 | `JwtSettings__Issuer` | Token issuer | Yes |
 | `JwtSettings__Audience` | Token audience | Yes |
@@ -94,7 +94,7 @@ Use double-underscore notation for nested config in App Service / containers:
 | `Email__FromAddress` | Verified sender address | Yes |
 | `Email__Smtp__Host` / `Email__Smtp__Port` | SMTP endpoint | Yes |
 | `Email__Smtp__Username` / `Email__Smtp__Password` | SMTP credentials (Key Vault) | Yes |
-| `FileStorage__Provider` | `Local` in development; future `AzureBlob` implementation | Yes |
+| `FileStorage__Provider` | `Local` default using App Service persistent home; `AzureBlob` optional | Yes |
 | `SeedUsers__AdminEmail` | Dev seed only | No (omit in prod) |
 | `SeedUsers__AdminPassword` | Dev seed only | No (omit in prod) |
 
@@ -105,7 +105,7 @@ See `.env.example` for a local template.
 1. Create one App Service with the .NET 10 runtime
 2. Enable **Managed Identity** → grant Key Vault access
 3. Configure Application Settings from Key Vault references
-4. Set `CacheProvider=Redis` and Redis connection string
+4. Keep `CacheProvider=Memory` initially, or configure Redis when cart persistence/scale-out is required
 5. Configure custom domain + TLS
 6. Add Stripe webhook URL: `https://<api-domain>/api/v1/payments/webhook`
 

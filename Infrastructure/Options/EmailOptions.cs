@@ -45,4 +45,5 @@ public class FileStorageOptions
     public const string SectionName = "FileStorage";
     public string Provider { get; set; } = "Local";
     public string ContainerName { get; set; } = "product-images";
+    public string? LocalPath { get; set; }
 }

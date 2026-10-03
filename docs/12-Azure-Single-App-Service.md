@@ -13,8 +13,8 @@ Azure App Service (.NET 10)
 
 Managed dependencies
 ├── Azure SQL Database
-├── Azure Cache for Redis (recommended)
-└── Azure Blob Storage for product images
+├── Azure Cache for Redis (optional future upgrade)
+└── Azure Blob Storage (optional future upgrade)
 ```
 
 Only one App Service hosts the frontend and API. Angular uses the relative production API URL `/api`.
@@ -31,7 +31,7 @@ Only one App Service hosts the frontend and API. Angular uses the relative produ
 | Legacy SQL dump | BLOCKER | Archived and explicitly marked non-deployable |
 | Localhost-only CORS | HIGH | Configuration-driven; same-origin production requires no CORS origin |
 | App Service proxy/HTTPS | HIGH | Forwarded headers and production HSTS configured |
-| Local product image files | HIGH | `AzureBlob` provider added |
+| Product image persistence | HIGH | App Service `%HOME%/data` local storage default; optional `AzureBlob` provider available |
 | Hardcoded development credentials | HIGH | Removed from appsettings and Docker templates |
 | SDK/runtime reproducibility | MEDIUM | `global.json`, `.nvmrc`, npm engines, and local `dotnet-ef` manifest added |
 | API, JWT, errors, health checks | READY | Existing behavior retained and validated |
@@ -117,12 +117,11 @@ JwtSettings__Issuer=https://<app-name>.azurewebsites.net
 JwtSettings__Audience=https://<app-name>.azurewebsites.net
 ClientUrl=https://<app-name>.azurewebsites.net
 
-CacheProvider=Redis
-ConnectionStrings__Redis=<Azure Redis TLS connection string>
+CacheProvider=Memory
 
-FileStorage__Provider=AzureBlob
-FileStorage__ContainerName=product-images
-ConnectionStrings__BlobStorage=<Azure Storage connection string>
+FileStorage__Provider=Local
+# Optional override; otherwise App Service uses %HOME%/data/NaturesChakki/uploads
+FileStorage__LocalPath=
 
 Email__Provider=Smtp
 Email__FromAddress=<verified sender>
@@ -143,7 +142,18 @@ No production secret belongs in Git or `appsettings*.json`.
 
 For ZIP deployment, set `WEBSITE_RUN_FROM_PACKAGE=1`. For Visual Studio **Web Deploy**, remove `WEBSITE_RUN_FROM_PACKAGE`; do not combine the two deployment modes.
 
-If Redis is intentionally deferred for the first single instance, set `CacheProvider=Memory` and omit the Redis connection. Carts will be lost on restart/deployment, so Redis remains the production recommendation.
+The affordable single-instance defaults require neither Redis nor Blob Storage. Memory carts are lost during App Service restart/deployment. Local product images use persistent App Service `%HOME%/data` storage and survive Web Deploy, but Azure Blob remains recommended before scale-out.
+
+Optional upgrades:
+
+```text
+CacheProvider=Redis
+ConnectionStrings__Redis=<Azure Redis TLS connection string>
+
+FileStorage__Provider=AzureBlob
+FileStorage__ContainerName=product-images
+ConnectionStrings__BlobStorage=<Azure Storage connection string>
+```
 
 ## First production bootstrap
 

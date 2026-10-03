@@ -2,12 +2,15 @@ using API;
 using API.Middleware;
 using Infrastructure;
 using Infrastructure.Data;
+using Infrastructure.Options;
+using Infrastructure.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Serilog;
+using Microsoft.Extensions.FileProviders;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json.Serialization;
@@ -133,6 +136,27 @@ try
 
     app.UseHttpsRedirection();
     app.UseStaticFiles();
+    var storageOptions = builder.Configuration
+        .GetSection(FileStorageOptions.SectionName)
+        .Get<FileStorageOptions>() ?? new();
+    if (storageOptions.Provider.Equals("Local", StringComparison.OrdinalIgnoreCase))
+    {
+        var uploadsPath = LocalFileStorage.GetUploadsPath(app.Environment, storageOptions);
+        Directory.CreateDirectory(uploadsPath);
+        var webRootUploads = Path.Combine(
+            app.Environment.WebRootPath ?? Path.Combine(app.Environment.ContentRootPath, "wwwroot"),
+            "uploads");
+        if (!Path.GetFullPath(uploadsPath).Equals(
+                Path.GetFullPath(webRootUploads),
+                StringComparison.OrdinalIgnoreCase))
+        {
+            app.UseStaticFiles(new StaticFileOptions
+            {
+                FileProvider = new PhysicalFileProvider(uploadsPath),
+                RequestPath = "/uploads"
+            });
+        }
+    }
     app.UseCors();
     app.UseRateLimiter();
     app.UseAuthentication();
