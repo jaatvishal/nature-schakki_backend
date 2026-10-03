@@ -1,5 +1,7 @@
 # Deployment
 
+This document describes the pre-production deployment assets present on `cursor/auth-cart-security-fixes-702b` (.NET 9 API plus separately built Angular client). The supported one-App-Service .NET 10 production implementation is the child branch `cursor/azure-single-app-production-702b`; use that branch for Azure SQL, APIM and production publishing rather than deploying this branch directly.
+
 ## Docker
 
 ### Multi-Stage API Dockerfile

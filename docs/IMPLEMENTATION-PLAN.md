@@ -2,18 +2,16 @@
 
 Natures Chakki e-commerce platform — phased delivery tracker.
 
-**Last updated:** September 2026  
-**Overall status:** Phases 2–12 largely complete ✅
+**Last updated:** October 2026
+**Overall status:** Customer, Admin, authentication/cart security and COD workflow complete on this branch.
 
 ## Current Workflow Baseline
 
-All new work must be based on `cursor/ui-improvements-702b`, which contains the latest Angular UI, admin dashboard, order lifecycle, payment/inventory flow, and customer order experience. The registration OTP and COD hardening changes were implemented on top of that baseline; older phase branches are historical references and must not be used as the base for future feature work.
-
-The expanded Admin Portal is implemented on `cursor/admin-portal-latest-ui-702b`, directly on top of `cursor/otp-cod-on-latest-ui-702b`. After these branches are merged, the merged target branch becomes the baseline; do not restart from an older phase branch.
+`cursor/auth-cart-security-fixes-702b` is the finalized functional baseline. `cursor/azure-single-app-production-702b` is its direct child and adds .NET 10, one-App-Service hosting, Azure SQL/APIM deployment and Production configuration. Use the Azure branch for production work; after its PR merges, use `main`. Older phase/UI branches are historical only.
 
 Current customer flow:
 
-`Register → Email OTP verification → Login/session restoration → Customer cart → COD checkout → Transactional order and stock update → Cart clear → My Orders`
+`Register → Email OTP verification → reactive session restoration → claim-owned kg cart → finalized COD checkout → transactional stock update → cart clear → polling timeline → Delivered/Paid`
 
 ---
 
@@ -68,7 +66,7 @@ Current customer flow:
 | Item | Status | Notes |
 |------|--------|-------|
 | Order entity + owned address | ✅ Complete | `StoreContext` |
-| `OrderService` (create, status, cancel) | ✅ Complete | Stock reserve/release |
+| `OrderService` (create, status, cancel) | ✅ Complete | COD deduction, cancellation reversal, status history |
 | `InventoryService` | ✅ Complete | Unit tested |
 | Orders API | ✅ Complete | `OrdersController` |
 | Checkout + order history UI | ✅ Complete | `checkout/`, `account/orders/` |
@@ -80,10 +78,8 @@ Current customer flow:
 
 | Item | Status | Notes |
 |------|--------|-------|
-| `StripePaymentService` | ✅ Complete | Mock mode for dev |
-| Payment intent endpoint | ✅ Complete | `PaymentsController` |
-| Webhook handler | ✅ Complete | `payment_intent.succeeded` |
-| Payment entity + unique index | ✅ Complete | Idempotency support |
+| COD checkout/payment status | ✅ Active | Pending → Paid on Delivered |
+| Stripe service/intent/webhook | ✅ Backend-ready | Future online checkout capability |
 
 ---
 
@@ -117,7 +113,7 @@ Current customer flow:
 | Admin guard + routes | ✅ Complete | `admin.guard.ts` |
 | Operational dashboard and reporting APIs | ✅ Complete | KPIs, trends, top products, recent activity |
 | Users, products, categories, orders, inventory, payments UI | ✅ Complete | `features/admin/` |
-| Local product image upload | ✅ Complete | `IFileStorageService`, validated Admin upload |
+| Product image upload | ✅ Complete | validated Local storage; internal SKU generation |
 | Inventory and order status history | ✅ Complete | movement/history tables |
 | Audit logging and operational alerts | ✅ Complete | `AuditService`, `/admin/audit`, `/admin/alerts` |
 
@@ -127,9 +123,9 @@ Current customer flow:
 
 | Item | Status | Notes |
 |------|--------|-------|
-| Unit tests (inventory, orders, coupons) | ✅ Complete | 9 tests |
-| Integration tests (API) | ✅ Complete | 11 tests |
-| Angular component tests | ✅ Complete | `app.spec.ts` |
+| Unit tests | ✅ Complete | 10 tests |
+| Integration tests | ✅ Complete | 24 tests |
+| Angular tests | ✅ Complete | 16 tests |
 | Test factory (in-memory DB) | ✅ Complete | `CustomWebApplicationFactory` |
 
 ---
@@ -145,7 +141,7 @@ Current customer flow:
 | Feature documentation | ✅ Complete | `docs/10-Feature-Documentation.md` |
 | Dockerfile (multi-stage) | ✅ Complete | Root `Dockerfile` |
 | Docker Compose with API service | ✅ Complete | `docker-compose.yml` |
-| Azure Pipelines CI | ✅ Complete | `azure-pipelines.yml` |
+| Legacy Azure Pipeline | ⚠ Historical | replaced by manual single-App-Service deployment on child Azure branch |
 | `.env.example` | ✅ Complete | Root template |
 | README | ✅ Complete | Portfolio-ready overview |
 
@@ -162,8 +158,9 @@ Current customer flow:
 | API versioning | ✅ Complete | Asp.Versioning v1 |
 | FluentValidation | ✅ Complete | Account validators |
 | CORS configuration | ✅ Complete | Dev origins configured |
-| Azure Blob storage migration | 🔲 Planned | `LocalFileStorage` → blob in prod |
-| Redis health check | 🔲 Planned | Add when Redis required |
+| Azure single-App-Service deployment | ➡ Child branch | `cursor/azure-single-app-production-702b` |
+| Persistent App Service uploads / optional Blob | ➡ Child branch | affordable Local default, Blob optional |
+| Memory default / optional Redis | ➡ Child branch | no mandatory Redis cost |
 | E2E Playwright tests | 🔲 Planned | Full checkout flow |
 | Production CDN deploy | 🔲 Planned | Static Web Apps / CDN |
 
@@ -171,11 +168,12 @@ Current customer flow:
 
 ## Remaining Work (Low Priority)
 
-1. Migrate `IFileStorageService` to Azure Blob in production
-2. Add Playwright/Cypress E2E tests for checkout
-3. Tighten rate limits on auth endpoints
-4. Add OpenTelemetry / Application Insights integration
-5. Add an email provider implementation beyond `SmtpEmailService` (SendGrid / ACS)
+1. Merge/deploy the child Azure production branch
+2. Add Playwright/Cypress deployment E2E tests
+3. Optimize the Angular initial bundle
+4. Production-gate/remove `BuggyController`
+5. Add Application Insights/OpenTelemetry
+6. Upgrade to Redis/Blob only when persistence/scale requires them
 
 ---
 
@@ -186,4 +184,4 @@ Current customer flow:
 | Local dev | https://localhost:5001 | http://localhost:4200 | localhost:1433 | localhost:6379 |
 | Docker | http://localhost:8080 | — | sql:1433 | redis:6379 |
 
-**Dev accounts:** `admin@natureschakki.com` / `Admin@123!` · `customer@natureschakki.com` / `Customer@123!`
+**Development accounts:** Optional and configured through User Secrets when `SeedUsers:Enabled=true`.

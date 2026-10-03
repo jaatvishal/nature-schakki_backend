@@ -21,7 +21,7 @@ docker compose up -d
 
 This starts:
 
-- **SQL Server** on `localhost:1433` (SA password: `Admin@123`)
+- **SQL Server** on `localhost:1433` (use an ignored local environment value)
 - **Redis** on `localhost:6379`
 
 Verify health:
@@ -37,7 +37,7 @@ Development settings are in `API/appsettings.Development.json`:
 ```json
 {
   "ConnectionStrings": {
-    "DefaultConnection": "Server=localhost,1433;Database=NaturesChakki;User Id=sa;Password=Admin@123;TrustServerCertificate=True",
+    "DefaultConnection": "Server=localhost,1433;Database=NaturesChakki;User Id=sa;Password=<local-password>;TrustServerCertificate=True",
     "Redis": "localhost:6379"
   },
   "CacheProvider": "Memory"
@@ -92,13 +92,13 @@ dotnet run --project API
 | Swagger UI | https://localhost:5001/swagger |
 | Health check | https://localhost:5001/health |
 
-On first run in Development, seed data and default users are created automatically.
+Catalog data and roles are seeded on startup. Optional users require `SeedUsers:Enabled=true` and externally supplied credentials.
 
 ## 5. Run the Frontend
 
 ```bash
 cd client
-npm install
+npm ci
 npm start
 ```
 
@@ -127,15 +127,21 @@ curl -k "https://localhost:5001/api/product?pageIndex=1&pageSize=6"
 # Login (customer)
 curl -k -X POST https://localhost:5001/api/v1/account/login \
   -H "Content-Type: application/json" \
-  -d '{"email":"customer@natureschakki.com","password":"Customer@123!"}'
+  -d '{"email":"<configured-email>","password":"<configured-password>"}'
 ```
 
 ## 7. Run Tests
 
 ```bash
 dotnet test Tests/Tests.csproj
-cd client && npm test
+cd client && npm test -- --watch=false
 ```
+
+Current branch baseline: 34 backend tests and 16 Angular tests.
+
+## Production handoff
+
+Use `cursor/azure-single-app-production-702b` for the .NET 10, one-App-Service Azure SQL/APIM deployment implementation built on this branch.
 
 ## Troubleshooting
 

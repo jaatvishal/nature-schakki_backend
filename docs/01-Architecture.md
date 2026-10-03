@@ -31,8 +31,8 @@ The API is one process with **feature-oriented modules** sharing a SQL Server da
 
 | Bounded Context | DbContext | Tables / Concerns |
 |-----------------|-----------|-------------------|
-| **Commerce** | `StoreContext` | Products, orders, cart (external cache), payments, coupons, reviews, wishlists, inventory |
-| **Identity** | `AppIdentityDbContext` | ASP.NET Identity (`AppUser`, `AppRole`), refresh tokens |
+| **Commerce** | `StoreContext` | Products, orders, payments, coupons, reviews, wishlists, inventory/history, audit |
+| **Identity** | `AppIdentityDbContext` | ASP.NET Identity, refresh tokens, email OTPs, password-reset tokens |
 
 Both contexts use the same `ConnectionStrings:DefaultConnection` but maintain separate EF migrations under `Infrastructure/Migrations/Store/` and `Infrastructure/Migrations/Identity/`.
 
@@ -41,7 +41,8 @@ Both contexts use the same `ConnectionStrings:DefaultConnection` but maintain se
 - **Repository + Unit of Work** — `IGenericRepository<T>`, `IUnitOfWork`, `IProductRespository`
 - **Specification** — `BaseSpecification<T>`, `ProductSpecification`, `OrderWithItemsSpecification`
 - **Strategy (cache)** — `CacheProvider` switches `ICartService` / `ICacheService` between Memory and Redis
-- **Domain services** — `OrderService`, `InventoryService`, `CouponService`, `StripePaymentService`
+- **Cart workflow** — authenticated ownership, authoritative product prices, kg validation, duplicate merging and per-cart locking
+- **Domain services** — `OrderService`, `InventoryService`, `CouponService`, `PasswordResetService`, `StripePaymentService`
 - **Admin projections** — paged DTO-based operational APIs for users, products, orders, inventory, payments, reports, audit, and alerts
 - **Storage strategy** — `IFileStorageService` isolates local product uploads from a future Azure Blob implementation
 
@@ -99,9 +100,9 @@ flowchart TB
 |------------|------------|-------|
 | `ProductController` | `/api/product` | Catalog, brands, types (unversioned + v1) |
 | `AccountController` | `/api/v1/account` | Register, login, refresh, logout |
-| `CartController` | `/api/v1/cart` | Anonymous cart by `id` query param |
+| `CartController` | `/api/v1/cart` | Guest compatibility plus claim-owned authenticated item writes |
 | `OrdersController` | `/api/v1/orders` | Create, list, cancel (authorized) |
-| `PaymentsController` | `/api/v1/payments` | Payment intent + Stripe webhook |
+| `PaymentsController` | `/api/v1/payments` | Future online-payment intent + Stripe webhook |
 | `WishlistController` | `/api/v1/wishlist` | User wishlist |
 | `ReviewsController` | `/api/v1/reviews` | Product reviews |
 | `CouponsController` | `/api/v1/coupons` | Validate coupon codes |
@@ -116,7 +117,8 @@ On startup (`API/Program.cs`), unless `ASPNETCORE_ENVIRONMENT=Testing`:
 2. Seed commerce data via `StoreContextSeed.SeedAsync`
 3. Seed dev users via `IdentitySeed.SeedUsersAsync` (Development only)
 
-Default dev accounts (from `SeedUsers` in `appsettings.json`):
+Development users are optional and require `SeedUsers:Enabled=true` plus external credentials. No default credentials are committed.
 
-- Admin: `admin@natureschakki.com` / `Admin@123!`
-- Customer: `customer@natureschakki.com` / `Customer@123!`
+## Branch handoff
+
+`cursor/auth-cart-security-fixes-702b` is the functional application baseline. Its child `cursor/azure-single-app-production-702b` upgrades to .NET 10 and adds one-App-Service Angular hosting, Azure SQL deployment scripts, APIM OpenAPI generation and Production configuration validation.

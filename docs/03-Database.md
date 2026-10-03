@@ -17,7 +17,7 @@ Connection string key: `ConnectionStrings:DefaultConnection`
 
 | Entity | Table | Description |
 |--------|-------|-------------|
-| `Product` | Products | Catalog items with price, stock, brand/type |
+| `Product` | Products | Catalog items; `Price` is authoritative INR per kg |
 | `ProductCategory` | ProductCategories | Category taxonomy |
 | `ProductBrand` | ProductBrands | Brand taxonomy |
 | `ProductImage` | ProductImages | Additional product images |
@@ -51,6 +51,7 @@ Connection string key: `ConnectionStrings:DefaultConnection`
 
 Identity tables (`AspNetUsers`, `AspNetRoles`, etc.) live in `AppIdentityDbContext` with `AppUser` (`IdentityUser<int>`) and `RefreshToken`.
 `EmailVerificationOtps` stores one hashed, expiring OTP record per unverified user.
+`PasswordResetTokens` stores only SHA-256 token hashes with UTC expiry, used and revoked timestamps.
 
 ## Indexes
 
@@ -69,6 +70,9 @@ Configured in `Infrastructure/Config/EntityConfigurations.cs`:
 | Products | IsArchived, IsActive | Admin/customer catalog filtering |
 | Wishlists | UserId | Unique |
 | RefreshTokens | Token | Unique |
+| EmailVerificationOtps | UserId | Unique |
+| PasswordResetTokens | TokenHash | Unique |
+| PasswordResetTokens | UserId | Lookup/revocation |
 
 ## Decimal Precision
 
@@ -81,7 +85,7 @@ Shopping carts are **not** persisted in SQL. They use `ICartService`:
 - `InMemoryCartStorage` when `CacheProvider=Memory`
 - `RedisCartStorage` when `CacheProvider=Redis`
 
-Cart entities (`ShoppingCart`, `CartItem`) are serialized JSON documents keyed by cart ID.
+Cart entities are serialized JSON documents. `CartWorkflow` binds authenticated carts to JWT user id, reloads trusted products/prices, validates kg quantities, merges duplicates and locks concurrent writes per cart.
 
 ## ER Diagram
 
@@ -146,7 +150,7 @@ erDiagram
 ## Seeding
 
 - **Commerce**: `Infrastructure/Data/StoreContextSeed.cs` — products, brands, categories, delivery methods from `Infrastructure/Data/SeedData/`
-- **Identity**: `Infrastructure/Data/IdentitySeed.cs` — Admin and Customer roles + dev users (Development only)
+- **Identity**: roles are idempotent; optional users require `SeedUsers:Enabled=true` and external credentials
 
 ## Migration Commands Reference
 
