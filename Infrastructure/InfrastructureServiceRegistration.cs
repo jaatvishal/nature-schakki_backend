@@ -51,6 +51,7 @@ public static class InfrastructureServiceRegistration
         services.AddScoped<IUnitOfWork, UnitOfWork>();
         services.AddScoped<IProductRespository, ProductRepository>();
         services.AddScoped<IProductSearchService, SqlProductSearchService>();
+        services.AddSingleton<IApplicationTimeZone, IndiaTimeZoneService>();
         services.AddScoped<IOrderService, OrderService>();
         services.AddScoped<IInventoryService, InventoryService>();
         services.AddScoped<ITokenService, TokenService>();
