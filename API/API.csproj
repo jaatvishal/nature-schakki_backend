@@ -6,6 +6,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <UserSecretsId>natures-chakki-api-development</UserSecretsId>
     <SpaRoot>$(MSBuildProjectDirectory)\..\client\</SpaRoot>
+    <UpdateApiOnPublish>false</UpdateApiOnPublish>
   </PropertyGroup>
 
   <ItemGroup>

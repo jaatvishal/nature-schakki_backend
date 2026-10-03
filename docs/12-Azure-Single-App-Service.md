@@ -226,6 +226,26 @@ GET https://<app-name>.azurewebsites.net/api/not-found → API 404, not Angular
 
 Test registration/OTP, login, cart, COD checkout, Admin product upload, orders, and logout after deployment.
 
+## Visual Studio publish
+
+This application does not use Azure API Management. `UpdateApiOnPublish` is disabled in `API.csproj`, so Visual Studio should deploy the App Service package without running the obsolete `dotnet swagger tofile` synchronization step.
+
+If an existing local publish profile still prints **Starting to update your API**, open:
+
+```text
+API/Properties/PublishProfiles/<profile>.pubxml
+```
+
+and set:
+
+```xml
+<UpdateApiOnPublish>false</UpdateApiOnPublish>
+```
+
+Alternatively remove the API Management service dependency from the Visual Studio Publish page. This does not disable Development Swagger UI; it only disables the optional post-deployment API Management update.
+
+`HTTP Error 500.30` is a separate startup failure. For this project it normally means required Production App Service settings are missing. Confirm every setting in **Required App Service settings**, restart the app, and inspect **App Service → Log stream**. The application intentionally refuses to start with an empty Azure SQL connection, JWT key, production URL, SMTP credentials, Redis connection (when Redis is selected), or Blob Storage connection (when AzureBlob is selected).
+
 ## Rollback
 
 - Use an App Service deployment slot or retain the previous ZIP.
