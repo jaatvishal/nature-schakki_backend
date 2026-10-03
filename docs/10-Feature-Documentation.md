@@ -16,9 +16,11 @@ End-to-end feature reference for the Natures Chakki e-commerce platform.
 
 **Frontend:** `client/src/app/features/shop/`
 
-- `shop.component.ts` — product grid with filters
-- `product-details.component.ts` — detail page with add-to-cart
-- `product-item.component.ts` — card component
+- `shop.component.ts` — responsive 4/5-column desktop grid, product search with automatic empty/clear reset, filters and sorting
+- `product-details.component.ts` — per-kg price, kg quantity/total and add-to-cart
+- `product-item.component.ts` — compact per-kg product card
+
+The global header search was removed; catalog search remains on the Shop page.
 
 **Specification pattern:** `ProductSpecification`, `ProductSpecParams` in `Core/Specifications/`
 
@@ -33,6 +35,8 @@ End-to-end feature reference for the Natures Chakki e-commerce platform.
 | `GET /api/v1/cart?id={cartId}` | Get cart (anonymous ID from localStorage) |
 | `POST /api/v1/cart` | Create/update cart |
 | `DELETE /api/v1/cart?id={cartId}` | Clear cart |
+| `POST /api/v1/cart/items` | Authenticated add/set product quantity in kg |
+| `DELETE /api/v1/cart/items/{productId}` | Authenticated item removal |
 
 Cart stored in Memory or Redis (`CacheProvider`). Not in SQL. `Product.Price` is the authoritative price per kilogram. The API recalculates every line as `price per kg × quantity kg`, ignores client-submitted prices, merges duplicate products, and validates quantity using `Cart` configuration. The header badge counts distinct products, not total kilograms.
 
@@ -64,7 +68,7 @@ Cart stored in Memory or Redis (`CacheProvider`). Not in SQL. `Product.Price` is
 5. In a serializable relational transaction, persist the COD order/items and deduct inventory
 6. Commit, then clear the authenticated user's cart
 
-Checkout currently supports **Cash on Delivery only**. A single generic Standard Delivery option is exposed; provider-specific UPS seed options are no longer shown.
+Checkout currently supports **Cash on Delivery only**. Checkout becomes read-only after placement, prevents duplicate customer submissions, and restores the finalized confirmation after refresh. Standard Delivery is within 7 days and currently limited to Delhi NCR/Ghaziabad.
 
 **Order lifecycle:** `Pending` → `PaymentReceived` (Paid) → `Processing` → `Packed` → `Shipped` → `OutForDelivery` → `Delivered`, plus `Cancelled`, `Refunded`, `Failed`. COD skips to `Processing`; Stripe webhook handling remains available for future online checkout. Admin updates delivery status and customers see the persisted timeline.
 
@@ -82,9 +86,7 @@ Checkout currently supports **Cash on Delivery only**. A single generic Standard
 
 See [06-Payments.md](./06-Payments.md) for full Stripe flow.
 
-**Frontend:** Checkout integrates payment intent creation after order placement.
-
-Mock mode available for development without Stripe keys.
+Angular does not currently create a payment intent. Stripe APIs remain backend-only future capability; COD is Pending until delivery, Paid when Delivered, and Failed when cancelled/failed.
 
 ---
 
@@ -109,7 +111,7 @@ Mock mode available for development without Stripe keys.
 **Frontend:** `client/src/app/features/admin/`
 
 - `dashboard.component.ts` — Welcome Back admin overview with summary cards
-- `products.component.ts` — product management
+- `products.component.ts` — product management with generated internal SKU and validated image upload
 - `orders.component.ts` — order/delivery status updates
 - `payments.component.ts` — payment history
 - `users/`, `categories/`, `inventory/`, `reports/`, `audit/`, `alerts/` — operational administration
@@ -132,7 +134,7 @@ See [11-Admin-Portal.md](./11-Admin-Portal.md) for API behavior, image-storage a
 
 One wishlist per user (`Wishlists.UserId` unique index).
 
-**Frontend:** `client/src/app/features/wishlist/wishlist.component.ts`
+The wishlist backend/service remains, but no customer wishlist route is currently registered in `app.routes.ts`.
 
 ---
 
@@ -172,7 +174,7 @@ Admin creates coupons via `/api/v1/admin/coupons`.
 
 **Backend:** `DeliveryMethodsController`
 
-- `GET /api/v1/deliverymethods` — list shipping options with price and delivery days
+- `GET /api/v1/deliverymethods` — Standard Delivery (within 7 days; Delhi NCR/Ghaziabad notice)
 - Seeded from `Infrastructure/Data/SeedData/delivery.json`
 
 ---
@@ -181,15 +183,15 @@ Admin creates coupons via `/api/v1/admin/coupons`.
 
 **Backend:** `AccountController`
 
-- Profile via `GET /api/v1/account/current`
+- Profile/session via `GET /api/v1/account/current` or `/current-user`
 - Registration requires expiring email OTP verification before login
 - OTP resend has cooldown, failed-attempt limits, and invalidates prior codes
-- Addresses managed through account-related endpoints and `Address` entity
+- Customer Profile displays name, email, phone (when present), and latest order delivery address
 
 **Frontend:** `client/src/app/features/account/`
 
 - `profile.component.ts`
-- `addresses.component.ts`
+- `addresses.component.ts` exists in the UI; dedicated Account address CRUD endpoints are not currently implemented
 
 ---
 
@@ -200,6 +202,16 @@ Admin creates coupons via `/api/v1/admin/coupons`.
 - `ReserveStockAsync` / `ReleaseStockAsync` on order create/cancel
 - `AdjustStockAsync` for admin stock updates
 - Synced with `Product.QuantityInStock` and `Inventory` table
+- COD placement deducts stock immediately; cancellation restores it and records inventory movement
+
+---
+
+## Contact
+
+- Email: `info@natureschakki.in`
+- Phones: `+91 9870514837`, `+91 9818213553`
+- Address: `P.No-11, Senga Enclave, Girdharpur Road, Chhapraula, G.B. Nagar 201009`
+- Facebook uses the verified supplied page URL; LinkedIn retains the current company URL
 
 ---
 

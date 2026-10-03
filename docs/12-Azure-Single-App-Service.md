@@ -2,6 +2,8 @@
 
 This is the authoritative manual deployment guide. Azure DevOps is not required.
 
+Current implementation lineage: `cursor/auth-cart-security-fixes-702b` → `cursor/azure-single-app-production-702b` → production PR targeting `main`. After merge, `main` is the only future baseline.
+
 ## Architecture
 
 ```text
@@ -56,6 +58,8 @@ Remove-Item Env:ConnectionStrings__DefaultConnection
 ```
 
 The script applies Store migrations first and Identity migrations second. Re-running it is safe because EF records applied migrations in `__EFMigrationsHistory`.
+
+If schema/data was copied manually, confirm the destination also contains all Store and Identity rows in `__EFMigrationsHistory`. Tables without matching history are not a valid EF baseline; do not run migrations blindly against that state.
 
 ### Option B — Generate reviewable SQL
 

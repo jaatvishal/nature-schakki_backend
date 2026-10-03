@@ -10,7 +10,7 @@ Configured in `Infrastructure/InfrastructureServiceRegistration.cs`:
 - New registrations remain unverified until email OTP confirmation
 - `AppRole` extends `IdentityRole<int>`
 - DbContext: `AppIdentityDbContext`
-- Password policy: digit, upper, lower required; min length 6
+- Password policy: digit, upper, lower required; minimum length 8
 
 ### Roles
 
@@ -45,7 +45,7 @@ Stored in `RefreshTokens` table (`AppIdentityDbContext`).
 
 | Field | Description |
 |-------|-------------|
-| `Token` | Base64 random string (64 bytes) |
+| `Token` | Opaque cryptographically random Base64 value (stored server-side for rotation/revocation) |
 | `UserId` | FK to `AppUser` |
 | `ExpiresAt` | Default 7 days from issuance |
 | `IsRevoked` | Set on refresh or logout |
@@ -58,8 +58,8 @@ Stored in `RefreshTokens` table (`AppIdentityDbContext`).
 | POST | `/api/v1/account/verify-email` | Anonymous | Verifies OTP, activates account, returns JWT + refresh |
 | POST | `/api/v1/account/resend-verification` | Anonymous | Invalidates prior OTP and sends a replacement subject to cooldown |
 | POST | `/api/v1/account/login` | Anonymous | Validates credentials, returns JWT + refresh |
-| GET | `/api/v1/account/current` | Bearer | Returns current user DTO |
-| POST | `/api/v1/account/refresh` | Anonymous | Revokes old refresh token, issues new pair |
+| GET | `/api/v1/account/current` or `/current-user` | Bearer | Returns current user DTO |
+| POST | `/api/v1/account/refresh` or `/refresh-token` | Anonymous | Revokes old refresh token, issues new pair |
 | POST | `/api/v1/account/logout` | Bearer | Revokes all active refresh tokens for user |
 | POST | `/api/v1/account/forgot-password` | Anonymous, rate limited | Always returns the same response and emails a short-lived opaque reset link |
 | POST | `/api/v1/account/reset-password` | Anonymous, rate limited | Consumes a single-use hashed reset token |
@@ -87,11 +87,12 @@ sequenceDiagram
 
 ## Frontend Integration
 
-- `client/src/app/core/services/auth.service.ts` — login, register, token storage
-- Application initialization validates the persisted access/refresh session against `/account/current`
+- `client/src/app/core/services/auth.service.ts` is the single reactive authentication state
+- Application initialization validates persisted access/refresh state against `/account/current-user`; invalid sessions clear state and header/account UI
 - `client/src/app/core/interceptors/auth-interceptor.ts` — attaches `Authorization: Bearer`, handles 401 with silent refresh
 - `client/src/app/core/guards/auth.guard.ts` — protects checkout and account routes
 - `client/src/app/core/guards/admin.guard.ts` — protects `/admin` routes
+- Successful Admin login redirects directly to `/admin`; customer login merges the guest cart and redirects to `/shop` or the requested route
 
 ## Development Users
 
@@ -99,7 +100,7 @@ Optional development users are seeded only when `SeedUsers:Enabled=true`. Email 
 
 ## Swagger
 
-Use the **Authorize** button and enter: `Bearer <your-jwt-token>`
+Development Swagger UI is available at `/swagger`. Use **Authorize** with `Bearer <token>`. Production Swagger is disabled by default and can be enabled temporarily with `Swagger:Enabled=true` for APIM import.
 
 ## Production Notes
 

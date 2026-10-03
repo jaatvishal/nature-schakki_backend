@@ -28,6 +28,8 @@ Registration logic: `Infrastructure/InfrastructureServiceRegistration.cs`
 
 Interface: `Core/Interfaces/ICartService.cs`
 
+`ICartService` is the storage abstraction. Controllers use `CartWorkflow`, which enforces ownership, trusted product prices, active/stock checks, configurable kg increments, duplicate merging and per-cart concurrency locks before writing storage.
+
 | Method | Description |
 |--------|-------------|
 | `GetCartAsync(key)` | Retrieve cart by anonymous or session ID |
@@ -38,16 +40,24 @@ Interface: `Core/Interfaces/ICartService.cs`
 
 - Static `ConcurrentDictionary<string, string>` in `Infrastructure/Services/InMemoryCartStorage.cs`
 - JSON-serialized `ShoppingCart` objects
-- **Dev/single-instance only** — data lost on restart, not shared across instances
+- **Affordable single-instance default** — data is lost on restart/deployment and is not shared across instances
 
 ### RedisCartStorage
 
 - `Infrastructure/Services/RedisCartStorage.cs`
 - Uses StackExchange.Redis `IDatabase`
-- Keys prefixed for cart isolation
-- **Required for production** multi-instance deployments
+- 30-day key expiry
+- Optional for restart persistence and multi-instance deployment
 
-Cart API: `API/Controllers/CartController.cs` — `GET/POST/DELETE /api/v1/cart?id={cartId}`
+Cart API:
+
+| Endpoint | Behavior |
+|----------|----------|
+| `GET /api/v1/cart?id=` | Read own authenticated cart or a non-user guest cart |
+| `POST /api/v1/cart` | Backward-compatible normalized replace; authenticated id comes from claims |
+| `POST /api/v1/cart/items` | Authenticated add/set quantity in kg |
+| `DELETE /api/v1/cart/items/{productId}` | Authenticated item removal |
+| `DELETE /api/v1/cart?id=` | Clear own/guest cart subject to ownership rules |
 
 ## ICacheService
 
@@ -92,14 +102,15 @@ flowchart LR
 
 | Concern | Recommendation |
 |---------|----------------|
-| Cart persistence | Set `CacheProvider=Redis` |
+| Affordable single App Service default | `CacheProvider=Memory` |
+| Cart persistence through restart/scale | Upgrade to `CacheProvider=Redis` |
 | Connection string | Use Azure Cache for Redis with SSL (`rediss://`) |
 | TTL | Add expiration on cart keys (e.g. 7–30 days) for abandoned carts |
 | Failover | Configure Redis connection multiplexer with retry and timeout |
 | Secrets | Store `ConnectionStrings__Redis` in Key Vault |
 | Monitoring | Track Redis memory, hit rate, and connection errors |
-| Scale-out | Never use `Memory` provider when running multiple API instances |
+| Scale-out | Use Redis before enabling multiple App Service instances |
 
 ## Health Checks
 
-`Program.cs` registers EF Core health checks for both DbContexts at `/health`. Consider adding a Redis health check when using the Redis provider in production.
+`Program.cs` registers EF Core health checks for both DbContexts at `/health`. Redis is not selected or health-checked by the affordable default; add a Redis health check when adopting that provider.

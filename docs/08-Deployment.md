@@ -46,10 +46,11 @@ flowchart TB
 
     subgraph Azure
         APP[Azure App Service - API]
-        KV[Azure Key Vault]
+        KV[Azure Key Vault - optional]
         SQL[(Azure SQL Database)]
-        REDIS[(Azure Cache for Redis)]
-        BLOB[Azure Blob Storage]
+        REDIS[(Azure Cache for Redis - optional)]
+        BLOB[Azure Blob Storage - optional]
+        LOCAL[(App Service HOME/data uploads)]
         INS[Application Insights]
     end
 
@@ -58,6 +59,7 @@ flowchart TB
     USER --> APP
     APP --> KV
     APP --> SQL
+    APP --> LOCAL
     APP --> REDIS
     APP --> BLOB
     APP --> INS
@@ -68,9 +70,10 @@ flowchart TB
 |---------|---------|
 | **App Service** | Host ASP.NET Core .NET 10 API and Angular static application |
 | **Azure SQL** | `StoreContext` + `AppIdentityDbContext` |
-| **Azure Cache for Redis** | Cart + distributed cache (`CacheProvider=Redis`) |
+| **App Service persistent HOME** | Default product image storage for the single App Service |
+| **Azure Cache for Redis** | Optional cart persistence/scale-out (`CacheProvider=Redis`) |
 | **Key Vault** | JWT key, Stripe secrets, connection strings |
-| **Blob Storage** | Product images (`IFileStorageService` / `LocalFileStorage` → migrate to blob) |
+| **Blob Storage** | Optional product image provider (`FileStorage:Provider=AzureBlob`) |
 | **Application Insights** | Serilog + request telemetry |
 
 ## Environment Variables
@@ -87,66 +90,62 @@ Use double-underscore notation for nested config in App Service / containers:
 | `JwtSettings__Issuer` | Token issuer | Yes |
 | `JwtSettings__Audience` | Token audience | Yes |
 | `JwtSettings__DurationInMinutes` | Access token TTL | Optional (60) |
-| `StripeSettings__SecretKey` | Stripe API key | Yes |
-| `StripeSettings__PublishableKey` | Stripe public key | Yes (frontend) |
-| `StripeSettings__WebhookSecret` | Webhook signing | Yes |
+| `ClientUrl` | Same App Service public HTTPS URL | Yes |
+| `StripeSettings__SecretKey` | Stripe API key | Only when enabling future online payments |
+| `StripeSettings__WebhookSecret` | Stripe webhook signing | Only when enabling future online payments |
 | `Email__Provider` | Email provider (`Smtp`) | Yes |
 | `Email__FromAddress` | Verified sender address | Yes |
 | `Email__Smtp__Host` / `Email__Smtp__Port` | SMTP endpoint | Yes |
 | `Email__Smtp__Username` / `Email__Smtp__Password` | SMTP credentials (Key Vault) | Yes |
 | `FileStorage__Provider` | `Local` default using App Service persistent home; `AzureBlob` optional | Yes |
-| `SeedUsers__AdminEmail` | Dev seed only | No (omit in prod) |
-| `SeedUsers__AdminPassword` | Dev seed only | No (omit in prod) |
+| `FileStorage__LocalPath` | Local upload root | Optional; defaults to `%HOME%/data/NaturesChakki/uploads` |
+| `Database__ApplyMigrationsOnStartup` | Startup schema changes | Must remain `false` in Production |
+| `Database__SeedStoreDataOnStartup` | One-time catalog seed | Enable once only when needed |
+| `Database__SeedIdentityRolesOnStartup` | Idempotent Admin/Customer role seed | Enable after schema exists |
+| `SeedUsers__Enabled` | Optional user bootstrap | `false`, except first Admin bootstrap |
+| `SeedUsers__AdminEmail` / `SeedUsers__AdminPassword` | One-time Production Admin bootstrap | Only while `SeedUsers__Enabled=true`; remove password afterward |
+| `Swagger__Enabled` | Runtime Swagger endpoint for temporary APIM import | Optional; default `false` |
 
 See `.env.example` for a local template.
 
 ## Azure App Service Setup
 
 1. Create one App Service with the .NET 10 runtime
-2. Enable **Managed Identity** → grant Key Vault access
-3. Configure Application Settings from Key Vault references
+2. Enable **Managed Identity** when using passwordless Azure SQL/Key Vault
+3. Configure Application Settings or Key Vault references
 4. Keep `CacheProvider=Memory` initially, or configure Redis when cart persistence/scale-out is required
 5. Configure custom domain + TLS
 6. Add Stripe webhook URL: `https://<api-domain>/api/v1/payments/webhook`
 
 ## Database Migrations in Production
 
-Run migrations as a deployment step (not on every instance startup in multi-instance):
+Run migrations as a deployment step, not during production startup:
 
 ```bash
-dotnet ef database update --project Infrastructure --startup-project API --context StoreContext
-dotnet ef database update --project Infrastructure --startup-project API --context AppIdentityDbContext
+./scripts/deploy-database.ps1
 ```
 
-Or use an App Service deployment slot / GitHub Action step before swap.
+Or generate idempotent scripts with `scripts/generate-database-scripts.ps1`, review them, then execute Store first and Identity second.
 
-## CI/CD
+## Manual publish
 
-`azure-pipelines.yml` provides Build → Test → Publish stages. Connect to Azure DevOps and configure:
-
-- Service connection to Azure
-- App Service deployment task in Publish stage
-- Variable group for secrets
+`scripts/publish-single-app.ps1` restores, builds, tests and publishes Angular + .NET into one output. Deploy the resulting ZIP manually with Visual Studio Web Deploy or `az webapp deploy`. The old two-service Azure DevOps pipeline is archived under `docs/legacy` and must not be enabled.
 
 ## Health & Monitoring
 
 - Liveness: `GET /health` (EF Core DbContext checks)
 - Logs: Serilog to console → App Service log stream / Application Insights
-- Alerts: 5xx rate, SQL connection failures, Redis timeouts
+- Alerts: 5xx rate and SQL connection failures; add Redis/Blob telemetry when those optional providers are selected
 
 ## CORS (Production)
 
-Update `API/Program.cs` CORS origins to production frontend URL:
-
-```csharp
-.WithOrigins("https://www.natureschakki.com")
-```
+Production Angular and API are same-origin, so normal browser calls require no CORS origin. `Cors:AllowedOrigins` is configuration-driven for an intentionally separate trusted client; Development lists localhost only.
 
 ## Security Checklist
 
 - [ ] HTTPS enforced (App Service + HSTS)
 - [ ] Secrets in Key Vault, not appsettings
 - [ ] `SeedUsers` disabled in Production
-- [ ] Redis SSL enabled
-- [ ] Stripe webhook signature validation active
+- [ ] Redis SSL enabled if Redis is selected
+- [ ] Stripe webhook signature validation active before enabling online payments
 - [ ] Rate limiting configured (100 req/min per user/host)

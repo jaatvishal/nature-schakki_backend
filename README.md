@@ -9,7 +9,7 @@ A full-stack e-commerce platform for artisan flour and grain products — built 
 
 ## Overview
 
-Natures Chakki demonstrates production-grade e-commerce patterns: JWT authentication with refresh tokens, Stripe payments, inventory management, coupon validation, admin moderation, and pluggable Redis/Memory caching — all in a clean layered architecture suitable for portfolio and interview discussion.
+Natures Chakki implements verified registration, JWT/refresh-token authentication, secure password reset, server-authoritative carts priced per kilogram, transactional COD checkout, inventory history, customer order tracking, and a role-protected Admin Portal. The production package hosts Angular and the API together in one Azure App Service.
 
 ```mermaid
 flowchart TB
@@ -31,27 +31,26 @@ flowchart TB
         REDIS[(Redis)]
     end
 
-    STRIPE[Stripe]
+    STORAGE[(App Service persistent uploads / optional Blob)]
 
     SHOP & CART & CHK & ADM -->|HTTPS + JWT| API
     API --> ID & SVC
     SVC --> SQL
     SVC --> REDIS
-    CHK --> STRIPE
-    STRIPE -->|Webhooks| API
+    SVC --> STORAGE
 ```
 
 ## Features
 
 - **Catalog** — Paginated product listing with brand/type filters and specifications pattern
-- **Cart** — Anonymous carts with Memory or Redis backing (`CacheProvider`)
-- **Orders** — Stock reservation, delivery methods, order lifecycle management
-- **Payments** — Stripe Payment Intents with webhook confirmation (mock mode for dev)
+- **Cart** — Claims-bound customer carts, authoritative database prices, configurable kg limits, Memory or optional Redis storage
+- **Orders** — Transactional COD checkout, stock deduction/reversal, validated lifecycle and status history
+- **Payments** — COD is the active checkout method; Stripe backend/webhook support remains available for future online checkout
 - **Coupons** — Percentage and fixed discounts with usage limits
 - **Wishlist** — Per-user saved products
 - **Reviews** — Customer reviews with admin moderation
-- **Admin** — Product, order, coupon, and review management
-- **Auth** — Identity, JWT, refresh tokens, role-based access (Admin / Customer)
+- **Admin** — Dashboard, products/images, users, categories, inventory, orders, COD payments, reports, audit and alerts
+- **Auth** — Email OTP activation, Identity password hashing, JWT/refresh tokens, single-use hashed password reset, Admin/Customer roles
 - **Order tracking** — Customer and Admin status timelines
 
 ## Tech Stack
@@ -62,23 +61,25 @@ flowchart TB
 | Auth | ASP.NET Identity, JWT Bearer, refresh tokens |
 | Frontend | Angular 21, Angular Material, Tailwind CSS 4 |
 | Database | SQL Server 2022 |
-| Cache | In-memory / Redis (StackExchange.Redis) |
-| Payments | Stripe.net |
+| Cache | In-memory default / optional Redis |
+| Files | Persistent App Service local storage default / optional Azure Blob |
+| Payments | COD active; Stripe.net backend available |
 | Tests | xUnit, WebApplicationFactory, Vitest |
-| DevOps | Docker, Docker Compose, Azure Pipelines |
+| Deployment | One Azure App Service, manual PowerShell deployment scripts, Docker |
 
 ## Project Structure
 
 ```
-├── API/                 # Controllers, middleware, hubs, Program.cs
+├── API/                 # Controllers, middleware, Angular static host, Program.cs
 ├── Core/                # Entities, DTOs, interfaces, specifications
 ├── Infrastructure/      # EF contexts, services, migrations, validators
 ├── Tests/               # Unit + integration tests
 ├── client/              # Angular 21 SPA
 ├── docs/                # Architecture & feature documentation
-├── Dockerfile           # Multi-stage API image
+├── scripts/             # Publish, Azure SQL and OpenAPI scripts
+├── Dockerfile           # Multi-stage Angular + API image
 ├── docker-compose.yml   # SQL Server + Redis + API
-└── azure-pipelines.yml  # CI/CD pipeline
+└── global.json          # Pinned .NET 10 SDK
 ```
 
 ## Quick Start
@@ -86,12 +87,14 @@ flowchart TB
 ### Prerequisites
 
 - .NET 10 SDK
-- Node.js 20+
+- Node.js 22
 - Docker
 
 ### 1. Start infrastructure
 
 ```bash
+cp .env.example .env
+# Set MSSQL_SA_PASSWORD and JWT_SIGNING_KEY in .env.
 docker compose up -d
 ```
 
@@ -106,7 +109,7 @@ API: https://localhost:5001 · Swagger: https://localhost:5001/swagger
 ### 3. Run the frontend
 
 ```bash
-cd client && npm install && npm start
+cd client && npm ci && npm start
 ```
 
 App: http://localhost:4200
@@ -119,17 +122,18 @@ Development migrations and catalog seed data run on startup after a local connec
 
 ## Configuration
 
-Key settings in `API/appsettings.json`:
+Configuration keys are declared in `API/appsettings*.json`; credentials are supplied through User Secrets, App Service settings or Key Vault:
 
 ```json
 {
   "ConnectionStrings": {
-    "DefaultConnection": "Server=localhost,1433;Database=NaturesChakki;...",
-    "Redis": "localhost:6379"
+    "DefaultConnection": "",
+    "Redis": "",
+    "BlobStorage": ""
   },
   "CacheProvider": "Memory",
-  "JwtSettings": { "Key": "...", "DurationInMinutes": 60 },
-  "StripeSettings": { "SecretKey": "...", "WebhookSecret": "..." }
+  "FileStorage": { "Provider": "Local" },
+  "JwtSettings": { "Key": "", "DurationInMinutes": 60 }
 }
 ```
 
@@ -142,7 +146,7 @@ dotnet test Tests/Tests.csproj
 cd client && npm test
 ```
 
-22 automated tests + documented E2E scenarios. See [docs/07-Testing.md](docs/07-Testing.md).
+35 backend tests and 16 Angular tests currently pass. See [docs/07-Testing.md](docs/07-Testing.md).
 
 ## Documentation
 
@@ -169,7 +173,7 @@ docker compose up -d          # SQL + Redis + API
 docker build -t natureschakki-api .
 ```
 
-API container: http://localhost:8080
+The container and `dotnet publish` outputs both host Angular and the API at `http://localhost:8080`, with API routes under `/api/*`.
 
 ## License
 

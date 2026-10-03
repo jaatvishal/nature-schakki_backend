@@ -2,18 +2,24 @@
 
 Natures Chakki e-commerce platform — phased delivery tracker.
 
-**Last updated:** September 2026  
-**Overall status:** Phases 2–12 largely complete ✅
+**Last updated:** October 2026
+**Overall status:** Customer, Admin, security and single-App-Service production work implemented; Azure resource configuration remains manual.
 
 ## Current Workflow Baseline
 
-All new work must be based on `cursor/ui-improvements-702b`, which contains the latest Angular UI, admin dashboard, order lifecycle, payment/inventory flow, and customer order experience. The registration OTP and COD hardening changes were implemented on top of that baseline; older phase branches are historical references and must not be used as the base for future feature work.
+The implemented branch chain is:
 
-The expanded Admin Portal is implemented on `cursor/admin-portal-latest-ui-702b`, directly on top of `cursor/otp-cod-on-latest-ui-702b`. After these branches are merged, the merged target branch becomes the baseline; do not restart from an older phase branch.
+```text
+cursor/auth-cart-security-fixes-702b
+  → cursor/azure-single-app-production-702b
+  → PR to main
+```
+
+The auth/cart branch contains the finalized OTP, COD, Admin and customer security/UX baseline. The Azure branch adds .NET 10, Angular-in-ASP.NET hosting, controlled Azure SQL deployment, production validation, APIM OpenAPI generation, persistent local uploads and optional Redis/Blob providers. After the production PR is merged, use `main`; older phase/UI branches are historical only.
 
 Current customer flow:
 
-`Register → Email OTP verification → Login/session restoration → Customer cart → COD checkout → Transactional order and stock update → Cart clear → My Orders`
+`Register → Email OTP verification → reactive session restoration → claim-owned kg cart → finalized COD checkout → transactional stock update → cart clear → polling order timeline → Delivered/Paid`
 
 ---
 
@@ -68,7 +74,7 @@ Current customer flow:
 | Item | Status | Notes |
 |------|--------|-------|
 | Order entity + owned address | ✅ Complete | `StoreContext` |
-| `OrderService` (create, status, cancel) | ✅ Complete | Stock reserve/release |
+| `OrderService` (create, status, cancel) | ✅ Complete | COD deduction, cancellation reversal, transition history |
 | `InventoryService` | ✅ Complete | Unit tested |
 | Orders API | ✅ Complete | `OrdersController` |
 | Checkout + order history UI | ✅ Complete | `checkout/`, `account/orders/` |
@@ -80,10 +86,9 @@ Current customer flow:
 
 | Item | Status | Notes |
 |------|--------|-------|
-| `StripePaymentService` | ✅ Complete | Mock mode for dev |
-| Payment intent endpoint | ✅ Complete | `PaymentsController` |
-| Webhook handler | ✅ Complete | `payment_intent.succeeded` |
-| Payment entity + unique index | ✅ Complete | Idempotency support |
+| COD checkout/payment state | ✅ Active | Pending → Paid on Delivered |
+| `StripePaymentService` and intent API | ✅ Backend-ready | Future online checkout capability |
+| Webhook handler + Payment uniqueness | ✅ Backend-ready | Idempotent future Stripe processing |
 
 ---
 
@@ -117,7 +122,7 @@ Current customer flow:
 | Admin guard + routes | ✅ Complete | `admin.guard.ts` |
 | Operational dashboard and reporting APIs | ✅ Complete | KPIs, trends, top products, recent activity |
 | Users, products, categories, orders, inventory, payments UI | ✅ Complete | `features/admin/` |
-| Local product image upload | ✅ Complete | `IFileStorageService`, validated Admin upload |
+| Product image upload | ✅ Complete | validated Local default; optional Azure Blob |
 | Inventory and order status history | ✅ Complete | movement/history tables |
 | Audit logging and operational alerts | ✅ Complete | `AuditService`, `/admin/audit`, `/admin/alerts` |
 
@@ -127,9 +132,9 @@ Current customer flow:
 
 | Item | Status | Notes |
 |------|--------|-------|
-| Unit tests (inventory, orders, coupons) | ✅ Complete | 9 tests |
-| Integration tests (API) | ✅ Complete | 11 tests |
-| Angular component tests | ✅ Complete | `app.spec.ts` |
+| Unit tests (inventory, orders, coupons) | ✅ Complete | 10 tests |
+| Integration tests (API) | ✅ Complete | 25 tests |
+| Angular tests | ✅ Complete | 16 tests |
 | Test factory (in-memory DB) | ✅ Complete | `CustomWebApplicationFactory` |
 
 ---
@@ -145,7 +150,10 @@ Current customer flow:
 | Feature documentation | ✅ Complete | `docs/10-Feature-Documentation.md` |
 | Dockerfile (multi-stage) | ✅ Complete | Root `Dockerfile` |
 | Docker Compose with API service | ✅ Complete | `docker-compose.yml` |
-| Azure Pipelines CI | ✅ Complete | `azure-pipelines.yml` |
+| Manual single-App-Service publish | ✅ Complete | `scripts/publish-single-app.ps1` |
+| Azure SQL deployment tools | ✅ Complete | migration apply + idempotent script generation |
+| APIM OpenAPI generation | ✅ Complete | Swagger 2/3 via `SwaggerHostFactory` |
+| Legacy Azure Pipeline | 🗄 Archived | incompatible two-service .NET 9 pipeline in `docs/legacy` |
 | `.env.example` | ✅ Complete | Root template |
 | README | ✅ Complete | Portfolio-ready overview |
 
@@ -161,21 +169,26 @@ Current customer flow:
 | Exception middleware | ✅ Complete | `ExceptionMiddleware.cs` |
 | API versioning | ✅ Complete | Asp.Versioning v1 |
 | FluentValidation | ✅ Complete | Account validators |
-| CORS configuration | ✅ Complete | Dev origins configured |
-| Azure Blob storage migration | 🔲 Planned | `LocalFileStorage` → blob in prod |
-| Redis health check | 🔲 Planned | Add when Redis required |
+| CORS configuration | ✅ Complete | config-driven; same-origin Production |
+| One App Service Angular + API | ✅ Complete | same-origin `/api`, SPA fallback |
+| .NET 10 / patched Angular 21 | ✅ Complete | pinned SDK/toolchains; production audits clean |
+| Production settings validation | ✅ Complete | SQL/JWT/URL/SMTP + selected providers |
+| Persistent local uploads | ✅ Complete | App Service `%HOME%/data`; Azure Blob optional |
+| Affordable Memory cache default | ✅ Complete | Redis optional before scale-out |
 | E2E Playwright tests | 🔲 Planned | Full checkout flow |
-| Production CDN deploy | 🔲 Planned | Static Web Apps / CDN |
+| Angular bundle optimization | 🔲 Planned | initial bundle exceeds warning budget |
 
 ---
 
 ## Remaining Work (Low Priority)
 
-1. Migrate `IFileStorageService` to Azure Blob in production
-2. Add Playwright/Cypress E2E tests for checkout
-3. Tighten rate limits on auth endpoints
-4. Add OpenTelemetry / Application Insights integration
-5. Add an email provider implementation beyond `SmtpEmailService` (SendGrid / ACS)
+1. Complete Azure App Service settings, SQL identity/firewall and initial bootstrap
+2. Verify manually copied Azure SQL includes complete `__EFMigrationsHistory`
+3. Add Playwright/Cypress deployment E2E tests
+4. Optimize the Angular initial bundle
+5. Production-gate or remove `BuggyController`
+6. Add Redis/Blob only when restart persistence or scale-out is required
+7. Add Application Insights/OpenTelemetry and an email provider beyond SMTP
 
 ---
 
@@ -184,6 +197,7 @@ Current customer flow:
 | Environment | API | Frontend | SQL | Redis |
 |-------------|-----|----------|-----|-------|
 | Local dev | https://localhost:5001 | http://localhost:4200 | localhost:1433 | localhost:6379 |
-| Docker | http://localhost:8080 | — | sql:1433 | redis:6379 |
+| Docker | http://localhost:8080 (Angular + API) | same origin | sql:1433 | redis:6379 |
+| Azure | one App Service (Angular + API) | same origin `/api` | Azure SQL | Memory default / optional Redis |
 
 **Development accounts:** Optional and configured through User Secrets when `SeedUsers:Enabled=true`.

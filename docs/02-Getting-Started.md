@@ -5,7 +5,7 @@
 | Tool | Version | Purpose |
 |------|---------|---------|
 | [.NET SDK](https://dotnet.microsoft.com/download) | 10.0 | Build and run the API |
-| [Node.js](https://nodejs.org/) | 20+ | Angular CLI and frontend |
+| [Node.js](https://nodejs.org/) | 22 | Angular CLI and frontend (`.nvmrc`) |
 | [Docker](https://www.docker.com/) | Latest | SQL Server and Redis containers |
 | Git | Latest | Clone the repository |
 
@@ -16,6 +16,8 @@ Optional: [Stripe CLI](https://stripe.com/docs/stripe-cli) for local webhook tes
 ```bash
 git clone <repository-url>
 cd <repo-root>
+cp .env.example .env
+# Set MSSQL_SA_PASSWORD and JWT_SIGNING_KEY in the ignored .env.
 docker compose up -d
 ```
 
@@ -52,7 +54,7 @@ dotnet user-secrets set "ConnectionStrings:DefaultConnection" "<local SQL connec
 
 For Redis-backed carts, set `"CacheProvider": "Redis"` in `appsettings.Development.json` or via environment variable.
 
-Copy `.env.example` to `.env` for local secret overrides (see Deployment docs).
+The ignored `.env` is used by Docker Compose only; use User Secrets for direct `dotnet run`.
 
 ### Local JWT and Gmail SMTP secrets
 
@@ -71,12 +73,18 @@ If `JwtSettings:Key` is missing in Development, the API now creates a secure eph
 
 ## 3. Database Migrations
 
-Migrations run automatically on API startup. To apply manually:
+EF Core migrations are the schema source of truth. Development startup applies them when `Database:ApplyMigrationsOnStartup=true`; Production keeps this false and deploys migrations separately.
+
+For local manual application:
 
 ```bash
+dotnet tool restore
+# Set ConnectionStrings__DefaultConnection in the current shell first.
 dotnet ef database update --project Infrastructure --startup-project API --context StoreContext
 dotnet ef database update --project Infrastructure --startup-project API --context AppIdentityDbContext
 ```
+
+The design-time factories intentionally read `ConnectionStrings__DefaultConnection` from the process environment so production tooling does not execute application startup.
 
 Add a new migration:
 
@@ -98,13 +106,13 @@ dotnet run --project API
 | Swagger UI | https://localhost:5001/swagger |
 | Health check | https://localhost:5001/health |
 
-On first run in Development, seed data and default users are created automatically.
+Development catalog seeding follows `Database:SeedStoreDataOnStartup`. Optional users require `SeedUsers:Enabled=true` plus secret-provided credentials.
 
 ## 5. Run the Frontend
 
 ```bash
 cd client
-npm install
+npm ci
 npm start
 ```
 
@@ -119,7 +127,7 @@ export const environment = {
 };
 ```
 
-Production build uses `client/src/environments/environment.prod.ts`.
+Production uses `client/src/environments/environment.prod.ts`, where `apiUrl` is the same-origin relative path `/api`. `dotnet publish -c Release` builds Angular automatically and includes it in API `wwwroot`.
 
 ## 6. Verify the Stack
 
@@ -140,8 +148,10 @@ curl -k -X POST https://localhost:5001/api/v1/account/login \
 
 ```bash
 dotnet test Tests/Tests.csproj
-cd client && npm test
+cd client && npm test -- --watch=false
 ```
+
+Current baseline: 35 backend tests and 16 Angular tests.
 
 ## Troubleshooting
 

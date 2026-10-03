@@ -19,7 +19,7 @@ EF Core migrations are the production schema source of truth. The archived SQL S
 
 | Entity | Table | Description |
 |--------|-------|-------------|
-| `Product` | Products | Catalog items with price, stock, brand/type |
+| `Product` | Products | Catalog items; `Price` is authoritative INR per kg, with generated SKU/unit/status |
 | `ProductCategory` | ProductCategories | Category taxonomy |
 | `ProductBrand` | ProductBrands | Brand taxonomy |
 | `ProductImage` | ProductImages | Additional product images |
@@ -53,6 +53,7 @@ EF Core migrations are the production schema source of truth. The archived SQL S
 
 Identity tables (`AspNetUsers`, `AspNetRoles`, etc.) live in `AppIdentityDbContext` with `AppUser` (`IdentityUser<int>`) and `RefreshToken`.
 `EmailVerificationOtps` stores one hashed, expiring OTP record per unverified user.
+`PasswordResetTokens` stores SHA-256 token hashes with UTC expiry, used and revoked timestamps; raw reset credentials are never stored.
 
 ## Indexes
 
@@ -71,6 +72,9 @@ Configured in `Infrastructure/Config/EntityConfigurations.cs`:
 | Products | IsArchived, IsActive | Admin/customer catalog filtering |
 | Wishlists | UserId | Unique |
 | RefreshTokens | Token | Unique |
+| EmailVerificationOtps | UserId | Unique |
+| PasswordResetTokens | TokenHash | Unique |
+| PasswordResetTokens | UserId | Lookup/revocation |
 
 ## Decimal Precision
 
@@ -83,7 +87,7 @@ Shopping carts are **not** persisted in SQL. They use `ICartService`:
 - `InMemoryCartStorage` when `CacheProvider=Memory`
 - `RedisCartStorage` when `CacheProvider=Redis`
 
-Cart entities (`ShoppingCart`, `CartItem`) are serialized JSON documents keyed by cart ID.
+Cart entities (`ShoppingCart`, `CartItem`) are serialized JSON documents keyed by cart ID. `CartWorkflow` binds authenticated carts to the JWT user id, reloads product data/prices, validates kg quantities, merges duplicate products and serializes concurrent writes per cart.
 
 ## ER Diagram
 
@@ -107,6 +111,8 @@ erDiagram
     Coupon ||--o{ CouponUsage : tracked
 
     AppUser ||--o{ RefreshToken : has
+    AppUser ||--o{ EmailVerificationOtp : verifies
+    AppUser ||--o{ PasswordResetToken : resets
     AppUser ||--o| Wishlist : owns
     AppUser ||--o{ Address : saves
     AppUser ||--o{ Notification : receives
@@ -147,8 +153,8 @@ erDiagram
 
 ## Seeding
 
-- **Commerce**: `Infrastructure/Data/StoreContextSeed.cs` — products, brands, categories, delivery methods from `Infrastructure/Data/SeedData/`
-- **Identity**: `Infrastructure/Data/IdentitySeed.cs` — Admin and Customer roles + dev users (Development only)
+- **Commerce**: optional idempotent products/brands/categories/inventory and 7-day delivery seed controlled by `Database:SeedStoreDataOnStartup`
+- **Identity**: roles may be created on startup; optional Development users or a one-time Production Admin require `SeedUsers:Enabled=true` and external credentials
 
 ## Migration Commands Reference
 
@@ -156,9 +162,11 @@ erDiagram
 # List migrations
 dotnet ef migrations list --project Infrastructure --startup-project API --context StoreContext
 
-# Roll back
-dotnet ef database update <PreviousMigration> --project Infrastructure --startup-project API --context StoreContext
+# Generate reviewable idempotent Azure SQL scripts
+./scripts/generate-database-scripts.ps1
 ```
+
+Production order is Store migrations first, Identity migrations second. `scripts/deploy-database.ps1` applies that order. If schema/data is copied manually, verify all expected rows exist in `__EFMigrationsHistory` before future EF deployment.
 
 ## Database Portability Assessment
 

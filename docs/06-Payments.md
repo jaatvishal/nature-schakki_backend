@@ -1,6 +1,6 @@
 # Payments
 
-Payments are processed through **Stripe Payment Intents** with webhook confirmation and idempotent order status updates.
+The active customer checkout supports **Cash on Delivery (COD) only**. Stripe services, intent APIs and idempotent webhook handling remain implemented for a future online-payment UI, but Angular checkout does not currently invoke Stripe.
 
 ## Components
 
@@ -16,13 +16,13 @@ Payments are processed through **Stripe Payment Intents** with webhook confirmat
 
 | Key | Description |
 |-----|-------------|
-| `StripeSettings:PublishableKey` | Frontend Stripe.js key |
+| `StripeSettings:PublishableKey` | Reserved for a future online-payment frontend |
 | `StripeSettings:SecretKey` | Server-side API key |
 | `StripeSettings:WebhookSecret` | Webhook signing secret (`whsec_...`) |
 
 When `SecretKey` is empty or `sk_test_placeholder`, the API runs in **mock mode** and returns `pi_mock_{guid}` intents.
 
-## Payment Flow
+## Active COD flow
 
 ```mermaid
 sequenceDiagram
@@ -30,26 +30,19 @@ sequenceDiagram
     participant FE as Angular Checkout
     participant API as PaymentsController
     participant OS as OrderService
-    participant S as Stripe
     participant DB as StoreContext
 
-    U->>FE: Place order
+    U->>FE: Place COD order
     FE->>API: POST /api/v1/orders
     API->>OS: CreateOrderAsync
-    OS->>DB: Reserve inventory, save Order (Pending)
-    API-->>FE: Order ID
-
-    FE->>API: POST /api/v1/payments/create-intent/{orderId}
-    API->>S: PaymentIntent.Create(amount)
-    S-->>API: paymentIntentId
-    API->>DB: Order.PaymentIntentId = id
-    API-->>FE: { clientSecret, paymentIntentId }
-
-    U->>S: Confirm payment (Stripe.js)
-    S->>API: POST /api/v1/payments/webhook (payment_intent.succeeded)
-    API->>DB: Payment record + OrderStatus.PaymentReceived
-    API-->>S: 200 OK
+    OS->>DB: Recalculate prices, save order/items, deduct stock
+    API->>DB: Clear authenticated customer cart
+    API-->>FE: Confirmed Order (Processing / COD Pending)
+    Note over API,DB: Admin progresses Packed → Shipped → OutForDelivery → Delivered
+    DB-->>FE: Delivered COD is displayed as Paid
 ```
+
+Order creation and stock movement execute in a serializable relational transaction. Duplicate customer submissions are serialized per user and the second request sees an empty cart.
 
 ## API Endpoints
 
@@ -57,6 +50,8 @@ sequenceDiagram
 |--------|-------|------|-------------|
 | POST | `/api/v1/payments/create-intent/{orderId}` | Bearer | Creates Stripe intent for order total |
 | POST | `/api/v1/payments/webhook` | Anonymous | Stripe event handler |
+
+These endpoints are backend capabilities for future online payment. Current COD checkout uses only `/api/v1/orders`.
 
 ## Webhook Handling
 
@@ -80,7 +75,7 @@ Mock mode: if webhook secret is `whsec_placeholder`, returns `200 OK` without pr
 | Status guard | `OrderService.UpdateOrderStatusAsync` validates transitions before updating |
 | Mock intents | Prefixed `pi_mock_` for local dev without Stripe |
 
-**Recommendation for production:** use Stripe idempotency keys on `PaymentIntent.Create` and check `Payment` table before inserting duplicate webhook records.
+Webhook processing checks the Payment table before inserting duplicate success/failure records. A future online checkout should additionally send Stripe idempotency keys when creating intents.
 
 ## Refunds
 
@@ -93,13 +88,19 @@ stripe listen --forward-to https://localhost:5001/api/v1/payments/webhook
 # Copy whsec_... to StripeSettings:WebhookSecret
 ```
 
-## Order Status Lifecycle
+## Order and payment status
 
 Relevant statuses (`Core/Enums/OrderStatus.cs`):
 
-`Pending` → `PaymentReceived` → `Processing` → `Shipped` → `Delivered`
+General lifecycle:
 
-Cancellation releases reserved inventory via `InventoryService`.
+`Pending` → `PaymentReceived` → `Processing` → `Packed` → `Shipped` → `OutForDelivery` → `Delivered`
+
+COD customer timeline omits `PaymentReceived`:
+
+`Pending` → `Processing` → `Packed` → `Shipped` → `OutForDelivery` → `Delivered`
+
+COD payment status is Pending before delivery, Paid when Delivered, and Failed when Cancelled/Failed. Cancellation restores deducted inventory and records the movement.
 
 ## Security
 

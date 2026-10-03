@@ -20,27 +20,14 @@ Security controls across the Natures Chakki platform.
 
 ### JWT Secret Management
 
-- Development: `appsettings.json` → `JwtSettings:Key`
+- Development: User Secrets or environment variable `JwtSettings__Key` (an ephemeral key is generated only when omitted)
 - Production: `JwtSettings__Key` from Azure Key Vault (min 256-bit random key)
 
 Never commit production keys. Rotate keys with a planned token invalidation window.
 
 ## CORS
 
-Configured in `API/Program.cs`:
-
-```csharp
-policy.AllowAnyHeader()
-    .AllowAnyMethod()
-    .AllowCredentials()
-    .WithOrigins(
-        "http://localhost:5001",
-        "https://localhost:5001",
-        "http://localhost:4200",
-        "https://localhost:4200");
-```
-
-**Production:** restrict to exact frontend origin(s). Do not use `AllowAnyOrigin()` with credentials.
+`Cors:AllowedOrigins` is configuration-driven. Development permits the Angular localhost origin. Production Angular and API share one origin, so no CORS origin is required by default. Wildcard origin with credentials is never enabled.
 
 ## Rate Limiting
 
@@ -49,7 +36,7 @@ Global fixed-window limiter in `Program.cs`:
 - **100 requests per minute** per authenticated user name or host header
 - Returns `429 Too Many Requests`
 
-Consider tighter limits on auth endpoints (`/account/login`, `/account/register`) in production.
+Forgot/reset password additionally allows 5 requests per 15 minutes per source IP.
 
 ## Secrets & Configuration
 
@@ -58,11 +45,13 @@ Consider tighter limits on auth endpoints (`/account/login`, `/account/register`
 | SQL password | Key Vault / App Service settings |
 | JWT key | Key Vault |
 | Stripe keys | Key Vault |
-| Redis connection | Key Vault |
+| Redis connection | App Service/Key Vault only when Redis is selected |
+| Blob Storage connection | App Service/Key Vault only when AzureBlob is selected |
+| SMTP App Password | App Service/Key Vault |
 
 `.env` is gitignored (`.gitignore`). Use `.env.example` as a template.
 
-`SeedUsers` credentials are Development-only (`IdentitySeed` checks `IsDevelopment()`).
+`SeedUsers` is disabled by default. Development users or a one-time Production Admin require explicit enablement and external credentials; the production Admin password must be removed after bootstrap.
 
 ## Input Validation
 
@@ -83,13 +72,13 @@ Email OTP values are generated with a cryptographic RNG, stored only as salted h
 - `UnauthorizedException` → 401
 - `ValidationException` → 400 with field errors
 
-`BuggyController` exists for integration/error testing only — disable or remove in production.
+`BuggyController` remains a known test-only endpoint surface and should be removed or production-gated before public launch.
 
 ## HTTPS
 
 - `UseHttpsRedirection()` enabled
 - Development cert: `dotnet dev-certs https --trust`
-- Production: TLS termination at App Service / reverse proxy
+- Production: forwarded headers are processed before HTTPS redirection; App Service terminates TLS and HSTS is enabled
 
 ## Stripe Webhook Security
 
@@ -102,18 +91,14 @@ Email OTP values are generated with a cryptographic RNG, stored only as salted h
 | Data | Protection |
 |------|------------|
 | Passwords | Hashed by Identity |
-| Refresh tokens | Stored hashed-equivalent (opaque random), revocable |
+| Refresh tokens | Opaque random database records, rotated and revocable (currently stored as token values) |
+| Password reset tokens | Only SHA-256 hashes are stored; short-lived, revoked on replacement and single-use |
 | Payment data | PCI scope minimized — Stripe handles card data |
 | PII (email, address) | SQL encryption at rest (Azure SQL TDE) recommended |
 
 ## HTTP Security Headers (Recommended)
 
-Add in production reverse proxy or middleware:
-
-- `Strict-Transport-Security`
-- `X-Content-Type-Options: nosniff`
-- `X-Frame-Options: DENY`
-- `Content-Security-Policy` on Angular static host
+Implemented: HSTS in Production, `X-Content-Type-Options: nosniff`, and `Referrer-Policy: no-referrer`. CSP and explicit frame policy remain recommended hardening.
 
 ## Audit Trail
 
@@ -126,7 +111,7 @@ dotnet list package --vulnerable
 cd client && npm audit
 ```
 
-Run in CI (see `azure-pipelines.yml`).
+Run before manual production publish. Current validation reports no vulnerable NuGet packages and no production npm dependency vulnerabilities; development-only npm advisories remain.
 
 ## Security Testing Checklist
 

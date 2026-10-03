@@ -29,7 +29,7 @@ Integration tests use `ASPNETCORE_ENVIRONMENT=Testing` (`CustomWebApplicationFac
 
 ```bash
 cd client
-npm test
+npm test -- --watch=false
 ```
 
 Uses Vitest (configured via `@angular/build`).
@@ -41,76 +41,27 @@ Tests/
 ├── Unit/
 │   ├── CouponServiceTests.cs      (4 tests)
 │   ├── InventoryServiceTests.cs   (3 tests)
-│   └── OrderServiceTests.cs       (2 tests)
+│   └── OrderServiceTests.cs       (3 tests)
 ├── Integration/
-│   └── IntegrationTests.cs        (11 tests)
+│   └── IntegrationTests.cs        (25 tests)
 └── GlobalUsings.cs
 ```
 
-## 25 Test Scenarios Covered
+## Current automated baseline
 
-### Unit — Inventory (`InventoryServiceTests`)
+| Suite | Count | Coverage |
+|-------|------:|----------|
+| Backend unit | 10 | inventory reserve/adjust, coupon rules, empty order, cancellation and invalid transitions |
+| Backend integration | 25 | catalog, OTP registration, login, secure reset, claim-owned cart, trusted prices/kg validation, transactional COD checkout, cross-user authorization, Admin CRUD/upload/inventory/audit/payment/status, health, SPA fallback and API 404 |
+| Angular | 16 | app boot, auth/admin guards, JWT interceptor, reactive login/logout/refresh state, distinct cart count/totals, finalized checkout/duplicate click, Shop search reset |
 
-| # | Test | Validates |
-|---|------|-----------|
-| 1 | `ReserveStockAsync_SucceedsWhenStockAvailable` | Stock reservation increments `ReservedQuantity` |
-| 2 | `ReserveStockAsync_FailsWhenInsufficientStock` | Returns false when stock insufficient |
-| 3 | `AdjustStockAsync_UpdatesProductQuantity` | Stock adjustment updates `Product.QuantityInStock` |
+Total: **35 backend tests + 16 Angular tests**.
 
-### Unit — Orders (`OrderServiceTests`)
+The integration factory uses EF InMemory and a temporary Angular `index.html`; Azure SQL/Redis/Blob/SMTP require deployment smoke tests.
 
-| # | Test | Validates |
-|---|------|-----------|
-| 4 | `UpdateOrderStatusAsync_Cancelled_ReleasesReservedStock` | Cancellation releases reserved inventory |
-| 5 | `CreateOrderAsync_ThrowsWhenCartEmpty` | Empty cart throws `BadRequestException` |
+## Production validation
 
-### Unit — Coupons (`CouponServiceTests`)
-
-| # | Test | Validates |
-|---|------|-----------|
-| 6 | `CalculateDiscount_Percentage_ReturnsCorrectAmount` | 10% discount on $100 = $10 |
-| 7 | `CalculateDiscount_FixedAmount_CapsAtOrderTotal` | Fixed discount capped at order total |
-| 8 | `CalculateDiscount_RespectsMinimumOrderAmount` | No discount below minimum order |
-| 9 | `ValidateCouponAsync_ThrowsWhenExpired` | Expired coupon rejected |
-
-### Integration — API (`IntegrationTests`)
-
-| # | Test | Validates |
-|---|------|-----------|
-| 10 | `GetProducts_ReturnsOkWithPagination` | `GET /api/product` returns `data` + `count` |
-| 11 | `GetProductById_ReturnsProduct` | `GET /api/product/1` returns seeded product |
-| 12 | `GetBrands_ReturnsStringArray` | `GET /api/product/brands` |
-| 13 | `GetTypes_ReturnsStringArray` | `GET /api/product/types` |
-| 14 | `Register_ReturnsUserWithToken` | `POST /api/v1/account/register` returns JWT |
-| 15 | `Login_WithInvalidCredentials_ReturnsUnauthorized` | Bad credentials → 401 |
-| 16 | `GetCart_ReturnsEmptyCartForNewId` | New cart ID returns empty cart |
-| 17 | `UpdateCart_PersistsItems` | `POST /api/v1/cart` persists items |
-| 18 | `HealthCheck_ReturnsHealthy` | `GET /health` → 200 |
-| 19 | `GetDeliveryMethods_ReturnsList` | `GET /api/v1/deliverymethods` |
-| 20 | `SearchProducts_WithBrandFilter_ReturnsFilteredResults` | Brand filter query param |
-
-Additional critical integration coverage includes registration activation by OTP, unverified login rejection, invalid/expired OTP, maximum attempts, resend cooldown and prior-code invalidation, safe email-provider failure, backend price recalculation, COD stock deduction/cart clearing, failed-checkout atomicity, and cross-customer order-detail protection.
-
-Admin integration coverage verifies Admin/customer role boundaries, dashboard access, product create/edit/activate/archive, image signature validation, inventory adjustment/history, audit output, COD payment history, and valid/invalid order status transitions. Angular guard tests cover direct Admin URL access for both Admin and Customer roles.
-
-### Angular (`app.spec.ts`)
-
-| # | Test | Validates |
-|---|------|-----------|
-| 21 | `should create the app` | Root component bootstraps |
-| 22 | `should render title` | Template renders expected heading |
-
-### Documented Manual / E2E Scenarios
-
-| # | Scenario | How to verify |
-|---|----------|---------------|
-| 23 | Checkout requires authentication | Navigate to `/checkout` unauthenticated → redirect to login |
-| 24 | Admin routes require Admin role | Customer JWT cannot access `/api/v1/admin/products` |
-| 25 | Payment intent mock mode | Create order + `POST /api/v1/payments/create-intent/{id}` returns `pi_mock_*` |
-
-## CI Integration
-
-See `azure-pipelines.yml` — Build stage runs `dotnet test` on every push.
+Manual production validation is defined in `scripts/publish-single-app.ps1` and `docs/12-Azure-Single-App-Service.md`. The legacy Azure DevOps pipeline is archived and is not the supported deployment path.
 
 ## Adding Tests
 

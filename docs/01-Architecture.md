@@ -6,7 +6,7 @@ Natures Chakki is a **modular monolith** e-commerce platform: a single deployabl
 
 | Layer | Project | Responsibility |
 |-------|---------|----------------|
-| Presentation | `API/` | Controllers, middleware, Swagger, CORS, rate limiting |
+| Presentation | `API/` | Controllers, middleware, Swagger, static Angular hosting, SPA fallback, rate limiting |
 | Application contracts | `Core/` | Entities, DTOs, interfaces, specifications, enums, exceptions |
 | Infrastructure | `Infrastructure/` | EF Core contexts, repositories, services, migrations, validators |
 | Frontend | `client/` | Angular 21 SPA (shop, cart, checkout, account, admin) |
@@ -31,8 +31,8 @@ The API is one process with **feature-oriented modules** sharing a SQL Server da
 
 | Bounded Context | DbContext | Tables / Concerns |
 |-----------------|-----------|-------------------|
-| **Commerce** | `StoreContext` | Products, orders, cart (external cache), payments, coupons, reviews, wishlists, inventory |
-| **Identity** | `AppIdentityDbContext` | ASP.NET Identity (`AppUser`, `AppRole`), refresh tokens |
+| **Commerce** | `StoreContext` | Products, orders, payments, coupons, reviews, wishlists, inventory/history, audit |
+| **Identity** | `AppIdentityDbContext` | ASP.NET Identity, refresh tokens, email OTPs, password-reset tokens |
 
 Both contexts use the same `ConnectionStrings:DefaultConnection` but maintain separate EF migrations under `Infrastructure/Migrations/Store/` and `Infrastructure/Migrations/Identity/`.
 
@@ -40,10 +40,11 @@ Both contexts use the same `ConnectionStrings:DefaultConnection` but maintain se
 
 - **Repository + Unit of Work** — `IGenericRepository<T>`, `IUnitOfWork`, `IProductRespository`
 - **Specification** — `BaseSpecification<T>`, `ProductSpecification`, `OrderWithItemsSpecification`
-- **Strategy (cache)** — `CacheProvider` switches `ICartService` / `ICacheService` between Memory and Redis
-- **Domain services** — `OrderService`, `InventoryService`, `CouponService`, `StripePaymentService`
+- **Strategy (cache)** — `CacheProvider` switches cart/cache storage between Memory and optional Redis
+- **Cart workflow** — claim-based ownership, product/price reload, quantity validation, duplicate merging and per-cart locking
+- **Domain services** — `OrderService`, `InventoryService`, `CouponService`, `PasswordResetService`, `StripePaymentService`
 - **Admin projections** — paged DTO-based operational APIs for users, products, orders, inventory, payments, reports, audit, and alerts
-- **Storage strategy** — `IFileStorageService` isolates local product uploads from a future Azure Blob implementation
+- **Storage strategy** — `IFileStorageService` selects persistent App Service local storage or Azure Blob
 
 ## Architecture Diagram
 
@@ -58,6 +59,7 @@ flowchart TB
     subgraph API["API/ (ASP.NET Core 10)"]
         CTRL[Controllers v1]
         MW[ExceptionMiddleware]
+        STATIC[Angular wwwroot + SPA fallback]
         HC[/health]
     end
 
@@ -77,6 +79,7 @@ flowchart TB
     subgraph External["External Systems"]
         SQL[(SQL Server)]
         REDIS[(Redis - optional)]
+        FILES[(Persistent local files / optional Blob)]
         STRIPE[Stripe API]
     end
 
@@ -88,6 +91,7 @@ flowchart TB
     SRV --> SC
     SRV --> IC
     SRV --> REDIS
+    SRV --> FILES
     SRV --> STRIPE
     SC --> SQL
     IC --> SQL
@@ -99,21 +103,19 @@ flowchart TB
 |------------|------------|-------|
 | `ProductController` | `/api/product` | Catalog, brands, types (unversioned + v1) |
 | `AccountController` | `/api/v1/account` | Register, login, refresh, logout |
-| `CartController` | `/api/v1/cart` | Anonymous cart by `id` query param |
+| `CartController` | `/api/v1/cart` | Guest read/replace by non-user id; authenticated writes are claim-owned |
 | `OrdersController` | `/api/v1/orders` | Create, list, cancel (authorized) |
-| `PaymentsController` | `/api/v1/payments` | Payment intent + Stripe webhook |
+| `PaymentsController` | `/api/v1/payments` | Dormant/future online-payment intent + Stripe webhook |
 | `WishlistController` | `/api/v1/wishlist` | User wishlist |
 | `ReviewsController` | `/api/v1/reviews` | Product reviews |
 | `CouponsController` | `/api/v1/coupons` | Validate coupon codes |
 | `AdminController` | `/api/v1/admin` | Admin role only |
 | `DeliveryMethodsController` | `/api/v1/deliverymethods` | Shipping options |
 
-## Startup & Seeding
+## Hosting, startup and seeding
 
-On startup (`API/Program.cs`), unless `ASPNETCORE_ENVIRONMENT=Testing`:
-
-1. Migrate `StoreContext` and `AppIdentityDbContext`
-2. Seed commerce data via `StoreContextSeed.SeedAsync`
-3. Seed dev users via `IdentitySeed.SeedUsersAsync` (Development only)
-
-Development users are optional and are provisioned from User Secrets or environment variables when `SeedUsers:Enabled=true`. No default credentials are committed.
+- Release `dotnet publish` runs `npm ci`, builds Angular production assets, and includes them in API `wwwroot`.
+- `/api/*` stays controller-owned; non-API deep links fall back to Angular `index.html`.
+- Production migrations are external and controlled (`Database:ApplyMigrationsOnStartup=false`).
+- Role, catalog and initial Admin seeding are independently configurable and idempotent.
+- Development users are optional and come from User Secrets/environment variables; no credentials are committed.
