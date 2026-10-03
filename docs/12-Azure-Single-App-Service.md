@@ -256,10 +256,16 @@ az apim api import `
   --resource-group <resource-group> `
   --service-name <api-management-service> `
   --api-id natures-chakki `
-  --path api `
+  --path natures-chakki `
   --specification-format OpenApiJson `
   --specification-path ./artifacts/openapi/swagger.json `
   --service-url https://<app-name>.azurewebsites.net
+```
+
+Because the OpenAPI operations already begin with `/api`, this produces APIM routes such as:
+
+```text
+https://<apim-name>.azure-api.net/natures-chakki/api/product
 ```
 
 The repository pins Swashbuckle CLI 10.2.3 and uses `SwaggerHostFactory`, so OpenAPI generation does not start the application, connect to Azure SQL, run migrations, or require production secrets.
