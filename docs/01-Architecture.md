@@ -1,6 +1,6 @@
 # Architecture
 
-Natures Chakki is a **modular monolith** e-commerce platform: a single deployable ASP.NET Core 9 API with a clear layered structure and two bounded database contexts.
+Natures Chakki is a **modular monolith** e-commerce platform: a single deployable ASP.NET Core 10 API with a clear layered structure and two bounded database contexts.
 
 ## Solution Structure
 
@@ -55,7 +55,7 @@ flowchart TB
         INT[HTTP Interceptors]
     end
 
-    subgraph API["API/ (ASP.NET Core 9)"]
+    subgraph API["API/ (ASP.NET Core 10)"]
         CTRL[Controllers v1]
         MW[ExceptionMiddleware]
         HC[/health]
@@ -116,7 +116,4 @@ On startup (`API/Program.cs`), unless `ASPNETCORE_ENVIRONMENT=Testing`:
 2. Seed commerce data via `StoreContextSeed.SeedAsync`
 3. Seed dev users via `IdentitySeed.SeedUsersAsync` (Development only)
 
-Default dev accounts (from `SeedUsers` in `appsettings.json`):
-
-- Admin: `admin@natureschakki.com` / `Admin@123!`
-- Customer: `customer@natureschakki.com` / `Customer@123!`
+Development users are optional and are provisioned from User Secrets or environment variables when `SeedUsers:Enabled=true`. No default credentials are committed.

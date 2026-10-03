@@ -116,7 +116,7 @@ Mock mode available for development without Stripe keys.
 
 See [11-Admin-Portal.md](./11-Admin-Portal.md) for API behavior, image-storage architecture, security boundaries, and operational flows.
 
-**Access:** Login as `admin@natureschakki.com` / `Admin@123!` → redirects to `/admin` with welcome message
+**Access:** An account assigned the Admin role redirects to `/admin`. Production Admin credentials are provisioned through secure App Service settings during the one-time bootstrap.
 
 ---
 

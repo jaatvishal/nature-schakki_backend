@@ -1,6 +1,6 @@
 # Testing
 
-Test project: `Tests/Tests.csproj` (xUnit, .NET 9)
+Test project: `Tests/Tests.csproj` (xUnit, .NET 10)
 
 | Suite | Path | Framework |
 |-------|------|-----------|

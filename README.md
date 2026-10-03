@@ -1,8 +1,8 @@
 # Natures Chakki
 
-A full-stack e-commerce platform for artisan flour and grain products — built as a **modular monolith** with ASP.NET Core 9 and Angular 21.
+A full-stack e-commerce platform for artisan flour and grain products — built as a **modular monolith** with ASP.NET Core 10 and Angular 21.
 
-[![.NET](https://img.shields.io/badge/.NET-9.0-512BD4)](https://dotnet.microsoft.com/)
+[![.NET](https://img.shields.io/badge/.NET-10.0-512BD4)](https://dotnet.microsoft.com/)
 [![Angular](https://img.shields.io/badge/Angular-21-DD0031)](https://angular.dev/)
 [![SQL Server](https://img.shields.io/badge/SQL%20Server-2022-CC2927)](https://www.microsoft.com/sql-server)
 [![Stripe](https://img.shields.io/badge/Stripe-Payments-635BFF)](https://stripe.com/)
@@ -20,7 +20,7 @@ flowchart TB
         ADM[Admin Panel]
     end
 
-    subgraph Backend["ASP.NET Core 9 API"]
+    subgraph Backend["ASP.NET Core 10 API"]
         API[REST Controllers v1]
         ID[Identity + JWT]
         SVC[Domain Services]
@@ -58,7 +58,7 @@ flowchart TB
 
 | Layer | Technology |
 |-------|------------|
-| API | ASP.NET Core 9, EF Core 9, Serilog, FluentValidation |
+| API | ASP.NET Core 10, EF Core 10, Serilog, FluentValidation |
 | Auth | ASP.NET Identity, JWT Bearer, refresh tokens |
 | Frontend | Angular 21, Angular Material, Tailwind CSS 4 |
 | Database | SQL Server 2022 |
@@ -85,7 +85,7 @@ flowchart TB
 
 ### Prerequisites
 
-- .NET 9 SDK
+- .NET 10 SDK
 - Node.js 20+
 - Docker
 
@@ -113,12 +113,9 @@ App: http://localhost:4200
 
 ### 4. Login
 
-| Role | Email | Password |
-|------|-------|----------|
-| Admin | admin@natureschakki.com | Admin@123! |
-| Customer | customer@natureschakki.com | Customer@123! |
+Development roles are created automatically. Optional development users are created only when `SeedUsers:Enabled=true` and their email/password values are supplied through User Secrets or environment variables.
 
-Migrations and seed data run automatically on first API start in Development.
+Development migrations and catalog seed data run on startup after a local connection string is configured. Production database deployment is always a separate controlled step.
 
 ## Configuration
 
@@ -162,6 +159,7 @@ cd client && npm test
 | [09-Security](docs/09-Security.md) | CORS, rate limiting, secrets |
 | [10-Features](docs/10-Feature-Documentation.md) | Feature reference |
 | [11-Admin Portal](docs/11-Admin-Portal.md) | Admin operations, security, inventory, uploads, reports |
+| [12-Azure Single App Service](docs/12-Azure-Single-App-Service.md) | Manual Azure SQL and one-App-Service deployment |
 | [Implementation Plan](docs/IMPLEMENTATION-PLAN.md) | Phase status tracker |
 
 ## Docker

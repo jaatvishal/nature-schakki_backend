@@ -4,7 +4,7 @@
 
 | Tool | Version | Purpose |
 |------|---------|---------|
-| [.NET SDK](https://dotnet.microsoft.com/download) | 9.0+ | Build and run the API |
+| [.NET SDK](https://dotnet.microsoft.com/download) | 10.0 | Build and run the API |
 | [Node.js](https://nodejs.org/) | 20+ | Angular CLI and frontend |
 | [Docker](https://www.docker.com/) | Latest | SQL Server and Redis containers |
 | Git | Latest | Clone the repository |
@@ -21,7 +21,7 @@ docker compose up -d
 
 This starts:
 
-- **SQL Server** on `localhost:1433` (SA password: `Admin@123`)
+- **SQL Server** on `localhost:1433` (set `MSSQL_SA_PASSWORD` in your ignored `.env`)
 - **Redis** on `localhost:6379`
 
 Verify health:
@@ -37,11 +37,17 @@ Development settings are in `API/appsettings.Development.json`:
 ```json
 {
   "ConnectionStrings": {
-    "DefaultConnection": "Server=localhost,1433;Database=NaturesChakki;User Id=sa;Password=Admin@123;TrustServerCertificate=True",
+    "DefaultConnection": "",
     "Redis": "localhost:6379"
   },
   "CacheProvider": "Memory"
 }
+```
+
+Store the local database connection in User Secrets rather than committed JSON:
+
+```bash
+dotnet user-secrets set "ConnectionStrings:DefaultConnection" "<local SQL connection string>" --project API
 ```
 
 For Redis-backed carts, set `"CacheProvider": "Redis"` in `appsettings.Development.json` or via environment variable.
@@ -127,7 +133,7 @@ curl -k "https://localhost:5001/api/product?pageIndex=1&pageSize=6"
 # Login (customer)
 curl -k -X POST https://localhost:5001/api/v1/account/login \
   -H "Content-Type: application/json" \
-  -d '{"email":"customer@natureschakki.com","password":"Customer@123!"}'
+  -d '{"email":"<configured-email>","password":"<configured-password>"}'
 ```
 
 ## 7. Run Tests

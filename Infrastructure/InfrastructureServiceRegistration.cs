@@ -77,9 +77,11 @@ public static class InfrastructureServiceRegistration
         services.AddScoped<IFileStorageService>(provider =>
         {
             var storageOptions = config.GetSection(FileStorageOptions.SectionName).Get<FileStorageOptions>() ?? new();
-            return storageOptions.Provider.Equals("Local", StringComparison.OrdinalIgnoreCase)
-                ? ActivatorUtilities.CreateInstance<LocalFileStorage>(provider)
-                : throw new InvalidOperationException($"Unsupported file storage provider '{storageOptions.Provider}'.");
+            if (storageOptions.Provider.Equals("Local", StringComparison.OrdinalIgnoreCase))
+                return ActivatorUtilities.CreateInstance<LocalFileStorage>(provider);
+            if (storageOptions.Provider.Equals("AzureBlob", StringComparison.OrdinalIgnoreCase))
+                return ActivatorUtilities.CreateInstance<AzureBlobFileStorage>(provider);
+            throw new InvalidOperationException($"Unsupported file storage provider '{storageOptions.Provider}'.");
         });
         services.AddScoped<IBasketService, BasketService>();
 

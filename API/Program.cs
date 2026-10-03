@@ -3,6 +3,7 @@ using Asp.Versioning;
 using Infrastructure;
 using Infrastructure.Data;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -20,11 +21,11 @@ Log.Logger = new LoggerConfiguration()
 try
 {
     var builder = WebApplication.CreateBuilder(args);
-    Directory.CreateDirectory(Path.Combine(builder.Environment.ContentRootPath, "wwwroot", "uploads"));
 
     builder.Host.UseSerilog((context, config) =>
         config.ReadFrom.Configuration(context.Configuration).WriteTo.Console());
 
+    ValidateProductionConfiguration(builder.Configuration, builder.Environment);
     builder.Services.AddInfrastructureServices(builder.Configuration, builder.Environment);
 
     var jwtKey = builder.Configuration["JwtSettings:Key"];
@@ -96,17 +97,21 @@ try
         });
     });
 
+    var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
     builder.Services.AddCors(options =>
     {
         options.AddDefaultPolicy(policy =>
-            policy.AllowAnyHeader()
-                .AllowAnyMethod()
-                .AllowCredentials()
-                .WithOrigins(
-                    "http://localhost:5001",
-                    "https://localhost:5001",
-                    "http://localhost:4200",
-                    "https://localhost:4200"));
+        {
+            if (allowedOrigins.Length > 0)
+                policy.WithOrigins(allowedOrigins).AllowAnyHeader().AllowAnyMethod().AllowCredentials();
+        });
+    });
+
+    builder.Services.Configure<ForwardedHeadersOptions>(options =>
+    {
+        options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+        options.KnownIPNetworks.Clear();
+        options.KnownProxies.Clear();
     });
 
     builder.Services.AddRateLimiter(options =>
@@ -137,6 +142,10 @@ try
 
     var app = builder.Build();
 
+    app.UseForwardedHeaders();
+    if (!app.Environment.IsDevelopment())
+        app.UseHsts();
+
     app.Use(async (context, next) =>
     {
         context.Response.Headers["Referrer-Policy"] = "no-referrer";
@@ -163,18 +172,45 @@ try
     app.MapControllers();
     app.MapHealthChecks("/health");
 
-    using (var scope = app.Services.CreateScope())
+    if (!app.Environment.IsEnvironment("Testing"))
     {
-        if (!app.Environment.IsEnvironment("Testing"))
+        using var scope = app.Services.CreateScope();
+        var storeContext = scope.ServiceProvider.GetRequiredService<StoreContext>();
+        var identityContext = scope.ServiceProvider.GetRequiredService<AppIdentityDbContext>();
+
+        if (builder.Configuration.GetValue<bool>("Database:ApplyMigrationsOnStartup"))
         {
-            var storeContext = scope.ServiceProvider.GetRequiredService<StoreContext>();
-            var identityContext = scope.ServiceProvider.GetRequiredService<AppIdentityDbContext>();
             await storeContext.Database.MigrateAsync();
             await identityContext.Database.MigrateAsync();
-            await StoreContextSeed.SeedAsync(storeContext);
-            await IdentitySeed.SeedUsersAsync(scope.ServiceProvider, app.Environment);
         }
+
+        if (builder.Configuration.GetValue<bool>("Database:SeedStoreDataOnStartup"))
+            await StoreContextSeed.SeedAsync(storeContext);
+
+        if (builder.Configuration.GetValue("Database:SeedIdentityRolesOnStartup", true))
+            await IdentitySeed.SeedUsersAsync(scope.ServiceProvider, app.Environment);
     }
+
+    app.MapFallback(async context =>
+    {
+        if (context.Request.Path.StartsWithSegments("/api"))
+        {
+            context.Response.StatusCode = StatusCodes.Status404NotFound;
+            return;
+        }
+
+        var webRoot = app.Environment.WebRootPath
+            ?? Path.Combine(app.Environment.ContentRootPath, "wwwroot");
+        var indexPath = Path.Combine(webRoot, "index.html");
+        if (!File.Exists(indexPath))
+        {
+            context.Response.StatusCode = StatusCodes.Status404NotFound;
+            return;
+        }
+
+        context.Response.ContentType = "text/html";
+        await context.Response.SendFileAsync(indexPath);
+    });
 
     app.Run();
 }
@@ -189,6 +225,59 @@ catch (Exception ex)
 finally
 {
     Log.CloseAndFlush();
+}
+
+static void ValidateProductionConfiguration(IConfiguration configuration, IHostEnvironment environment)
+{
+    if (!environment.IsProduction()) return;
+
+    var errors = new List<string>();
+    RequireConnectionString("DefaultConnection");
+
+    Require("JwtSettings:Key", value => Encoding.UTF8.GetByteCount(value) >= 32);
+    RequireHttpsUrl("JwtSettings:Issuer");
+    RequireHttpsUrl("JwtSettings:Audience");
+    RequireHttpsUrl("ClientUrl");
+    Require("Email:FromAddress");
+    Require("Email:Smtp:Username");
+    Require("Email:Smtp:Password");
+
+    if (configuration["CacheProvider"]?.Equals("Redis", StringComparison.OrdinalIgnoreCase) == true)
+        RequireConnectionString("Redis");
+    if (configuration["FileStorage:Provider"]?.Equals("AzureBlob", StringComparison.OrdinalIgnoreCase) == true)
+        RequireConnectionString("BlobStorage");
+    if (configuration.GetValue<bool>("SeedUsers:Enabled"))
+    {
+        Require("SeedUsers:AdminEmail");
+        Require("SeedUsers:AdminPassword", value => value.Length >= 12);
+    }
+
+    if (errors.Count > 0)
+        throw new InvalidOperationException(
+            "Production configuration is incomplete: " + string.Join(", ", errors));
+
+    void Require(string key, Func<string, bool>? validator = null)
+    {
+        var value = configuration[key];
+        if (string.IsNullOrWhiteSpace(value) || (validator != null && !validator(value)))
+            errors.Add(key);
+    }
+
+    void RequireConnectionString(string name)
+    {
+        var value = configuration.GetConnectionString(name);
+        if (string.IsNullOrWhiteSpace(value) ||
+            value.Contains("YOUR_PASSWORD", StringComparison.OrdinalIgnoreCase) ||
+            value.Contains("localhost", StringComparison.OrdinalIgnoreCase))
+            errors.Add($"ConnectionStrings:{name}");
+    }
+
+    void RequireHttpsUrl(string key)
+    {
+        var value = configuration[key];
+        if (!Uri.TryCreate(value, UriKind.Absolute, out var uri) || uri.Scheme != Uri.UriSchemeHttps)
+            errors.Add(key);
+    }
 }
 
 public partial class Program;

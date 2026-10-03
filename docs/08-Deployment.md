@@ -1,5 +1,7 @@
 # Deployment
 
+> The supported production topology is now one Azure App Service serving both Angular and the .NET 10 API. See [12-Azure-Single-App-Service.md](./12-Azure-Single-App-Service.md) for the authoritative manual deployment procedure. The legacy Azure DevOps pipeline is not part of this deployment process.
+
 ## Docker
 
 ### Multi-Stage API Dockerfile
@@ -32,15 +34,7 @@ API waits for SQL and Redis health checks before starting.
 
 ### Frontend
 
-Build static assets and serve via CDN or nginx:
-
-```bash
-cd client
-npm run build
-# Output: client/dist/client/browser/
-```
-
-Point `environment.prod.ts` `apiUrl` to the production API.
+Angular is built during `dotnet publish` and included in the API publish output under `wwwroot`. Production uses the same-origin API URL `/api`; a separate frontend host is not required.
 
 ## Azure Architecture
 
@@ -51,7 +45,6 @@ flowchart TB
     end
 
     subgraph Azure
-        CDN[Azure Static Web Apps / CDN]
         APP[Azure App Service - API]
         KV[Azure Key Vault]
         SQL[(Azure SQL Database)]
@@ -62,8 +55,7 @@ flowchart TB
 
     STRIPE[Stripe]
 
-    USER --> CDN
-    CDN -->|API calls| APP
+    USER --> APP
     APP --> KV
     APP --> SQL
     APP --> REDIS
@@ -74,7 +66,7 @@ flowchart TB
 
 | Service | Purpose |
 |---------|---------|
-| **App Service** | Host ASP.NET Core API (`linux`, .NET 9) |
+| **App Service** | Host ASP.NET Core .NET 10 API and Angular static application |
 | **Azure SQL** | `StoreContext` + `AppIdentityDbContext` |
 | **Azure Cache for Redis** | Cart + distributed cache (`CacheProvider=Redis`) |
 | **Key Vault** | JWT key, Stripe secrets, connection strings |
@@ -110,7 +102,7 @@ See `.env.example` for a local template.
 
 ## Azure App Service Setup
 
-1. Create App Service (Linux, .NET 9)
+1. Create one App Service with the .NET 10 runtime
 2. Enable **Managed Identity** → grant Key Vault access
 3. Configure Application Settings from Key Vault references
 4. Set `CacheProvider=Redis` and Redis connection string

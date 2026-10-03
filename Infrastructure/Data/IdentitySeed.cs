@@ -22,13 +22,36 @@ public static class IdentitySeed
                 await roleManager.CreateAsync(new AppRole { Name = role });
         }
 
-        var adminEmail = config["SeedUsers:AdminEmail"] ?? "admin@natureschakki.com";
-        var adminPassword = config["SeedUsers:AdminPassword"] ?? "Admin@123!";
-        var customerEmail = config["SeedUsers:CustomerEmail"] ?? "customer@natureschakki.com";
-        var customerPassword = config["SeedUsers:CustomerPassword"] ?? "Customer@123!";
+        if (env.IsDevelopment())
+        {
+            if (!config.GetValue<bool>("SeedUsers:Enabled")) return;
+            await CreateUserAsync(
+                userManager,
+                Required("SeedUsers:AdminEmail"),
+                "Admin User",
+                Required("SeedUsers:AdminPassword"),
+                "Admin");
+            await CreateUserAsync(
+                userManager,
+                Required("SeedUsers:CustomerEmail"),
+                "Test Customer",
+                Required("SeedUsers:CustomerPassword"),
+                "Customer");
+            return;
+        }
 
-        await CreateUserAsync(userManager, adminEmail, "Admin User", adminPassword, "Admin");
-        await CreateUserAsync(userManager, customerEmail, "Test Customer", customerPassword, "Customer");
+        if (config.GetValue<bool>("SeedUsers:Enabled"))
+        {
+            await CreateUserAsync(
+                userManager,
+                Required("SeedUsers:AdminEmail"),
+                "Admin User",
+                Required("SeedUsers:AdminPassword"),
+                "Admin");
+        }
+
+        string Required(string key) =>
+            config[key] ?? throw new InvalidOperationException($"{key} must be configured.");
     }
 
     private static async Task CreateUserAsync(

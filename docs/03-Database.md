@@ -11,6 +11,8 @@ Natures Chakki uses **SQL Server** with two EF Core DbContexts sharing one datab
 
 Connection string key: `ConnectionStrings:DefaultConnection`
 
+EF Core migrations are the production schema source of truth. The archived SQL Server export under `Infrastructure/Data/Legacy` must not be used for Azure SQL deployment. Apply Store migrations first and Identity migrations second using `scripts/deploy-database.ps1`, or generate reviewable idempotent scripts with `scripts/generate-database-scripts.ps1`.
+
 ## Commerce Schema (`StoreContext`)
 
 ### Entities

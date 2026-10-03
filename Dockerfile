@@ -1,5 +1,11 @@
-# Build stage
-FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
+FROM node:22-alpine AS client-build
+WORKDIR /src/client
+COPY client/package*.json ./
+RUN npm ci
+COPY client/ ./
+RUN npm run build -- --configuration production
+
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 
 COPY Natures_Chakki_Backend.sln ./
@@ -13,11 +19,14 @@ COPY API/ API/
 COPY Core/ Core/
 COPY Infrastructure/ Infrastructure/
 
-RUN dotnet publish API/API.csproj -c Release -o /app/publish --no-restore
+RUN dotnet publish API/API.csproj -c Release -o /app/publish --no-restore -p:BuildAngular=false
+COPY --from=client-build /src/client/dist/client/browser/ /app/publish/wwwroot/
 
-# Runtime stage
-FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS runtime
+FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
 WORKDIR /app
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends curl \
+    && rm -rf /var/lib/apt/lists/*
 
 ENV ASPNETCORE_URLS=http://+:8080
 ENV ASPNETCORE_ENVIRONMENT=Production

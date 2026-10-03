@@ -186,4 +186,4 @@ Current customer flow:
 | Local dev | https://localhost:5001 | http://localhost:4200 | localhost:1433 | localhost:6379 |
 | Docker | http://localhost:8080 | — | sql:1433 | redis:6379 |
 
-**Dev accounts:** `admin@natureschakki.com` / `Admin@123!` · `customer@natureschakki.com` / `Customer@123!`
+**Development accounts:** Optional and configured through User Secrets when `SeedUsers:Enabled=true`.

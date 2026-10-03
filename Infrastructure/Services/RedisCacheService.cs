@@ -11,7 +11,7 @@ public class RedisCacheService(IConnectionMultiplexer redis) : ICacheService
     public async Task<T?> GetAsync<T>(string key)
     {
         var data = await _database.StringGetAsync(key);
-        return data.IsNullOrEmpty ? default : JsonSerializer.Deserialize<T>(data!);
+        return data.IsNullOrEmpty ? default : JsonSerializer.Deserialize<T>(data.ToString());
     }
 
     public async Task SetAsync<T>(string key, T value, TimeSpan? expiry = null)

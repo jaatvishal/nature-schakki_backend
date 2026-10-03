@@ -19,9 +19,15 @@ namespace Tests.Integration;
 
 public class CustomWebApplicationFactory : WebApplicationFactory<Program>
 {
+    private readonly string _webRoot =
+        Path.Combine(Path.GetTempPath(), $"natures-chakki-web-{Guid.NewGuid():N}");
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
+        Directory.CreateDirectory(_webRoot);
+        File.WriteAllText(Path.Combine(_webRoot, "index.html"), "<html><body>Angular Test App</body></html>");
         builder.UseEnvironment("Testing");
+        builder.UseWebRoot(_webRoot);
         builder.ConfigureTestServices(services =>
         {
             services.RemoveAll<IEmailService>();
@@ -844,5 +850,18 @@ public class IntegrationTests : IClassFixture<CustomWebApplicationFactory>
         var json = await response.Content.ReadAsStringAsync();
         using var doc = JsonDocument.Parse(json);
         Assert.True(doc.RootElement.GetProperty("count").GetInt32() >= 1);
+    }
+
+    [Fact]
+    public async Task SingleAppHosting_ServesSpaFallback_ButKeepsApi404()
+    {
+        var spa = await _client.GetAsync("/profile/deep-link");
+        spa.EnsureSuccessStatusCode();
+        Assert.Equal("text/html", spa.Content.Headers.ContentType?.MediaType);
+        Assert.Contains("Angular Test App", await spa.Content.ReadAsStringAsync());
+
+        var api = await _client.GetAsync("/api/not-a-real-endpoint");
+        Assert.Equal(System.Net.HttpStatusCode.NotFound, api.StatusCode);
+        Assert.DoesNotContain("Angular Test App", await api.Content.ReadAsStringAsync());
     }
 }

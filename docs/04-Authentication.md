@@ -95,12 +95,7 @@ sequenceDiagram
 
 ## Development Users
 
-Seeded in Development via `IdentitySeed` (`SeedUsers` config):
-
-| Email | Password | Role |
-|-------|----------|------|
-| admin@natureschakki.com | Admin@123! | Admin |
-| customer@natureschakki.com | Customer@123! | Customer |
+Optional development users are seeded only when `SeedUsers:Enabled=true`. Email addresses and passwords must be supplied through User Secrets or environment variables; no default credentials are committed.
 
 ## Swagger
 
