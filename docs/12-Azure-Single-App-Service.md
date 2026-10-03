@@ -109,7 +109,6 @@ Set these under **App Service → Configuration → Application settings** or th
 ```text
 ASPNETCORE_ENVIRONMENT=Production
 SCM_DO_BUILD_DURING_DEPLOYMENT=false
-WEBSITE_RUN_FROM_PACKAGE=1
 
 ConnectionStrings__DefaultConnection=<Azure SQL connection string>
 
@@ -141,6 +140,8 @@ Swagger__Enabled=false
 ```
 
 No production secret belongs in Git or `appsettings*.json`.
+
+For ZIP deployment, set `WEBSITE_RUN_FROM_PACKAGE=1`. For Visual Studio **Web Deploy**, remove `WEBSITE_RUN_FROM_PACKAGE`; do not combine the two deployment modes.
 
 If Redis is intentionally deferred for the first single instance, set `CacheProvider=Memory` and omit the Redis connection. Carts will be lost on restart/deployment, so Redis remains the production recommendation.
 
