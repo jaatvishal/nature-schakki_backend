@@ -32,7 +32,8 @@ public class AdminController(
     IInventoryService inventoryService,
     IReviewService reviewService,
     IAuditService auditService,
-    IFileStorageService fileStorage) : ControllerBase
+    IFileStorageService fileStorage,
+    IApplicationTimeZone applicationTime) : ControllerBase
 {
     private int AdminId => int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
     private string? IpAddress => HttpContext.Connection.RemoteIpAddress?.ToString();
@@ -40,8 +41,8 @@ public class AdminController(
     [HttpGet("dashboard")]
     public async Task<ActionResult<AdminDashboardDto>> GetDashboard()
     {
-        var today = DateTime.UtcNow.Date;
-        var trendStart = today.AddDays(-29);
+        var today = applicationTime.ToDisplayTime(applicationTime.UtcNow).Date;
+        var trendStart = applicationTime.ToUtc(today.AddDays(-29));
         var terminalFailures = new[] { OrderStatus.Cancelled, OrderStatus.Failed, OrderStatus.Refunded };
 
         var orderCounts = await context.Orders.AsNoTracking()
@@ -63,15 +64,18 @@ public class AdminController(
             .Take(8)
             .ToListAsync();
 
-        var salesRows = await context.Orders.AsNoTracking()
+        var deliveredSales = await context.Orders.AsNoTracking()
             .Where(x => x.OrderDate >= trendStart && x.Status == OrderStatus.Delivered)
-            .GroupBy(x => x.OrderDate.Date)
-            .Select(x => new { Date = x.Key, Count = x.Count(), Value = x.Sum(o => o.Total) })
-            .OrderBy(x => x.Date)
+            .Select(x => new { x.OrderDate, x.Total })
             .ToListAsync();
-        var salesTrend = salesRows.Select(x => new ChartPointDto
+        var salesTrend = deliveredSales
+            .GroupBy(x => applicationTime.ToDisplayTime(x.OrderDate).Date)
+            .OrderBy(x => x.Key)
+            .Select(x => new ChartPointDto
         {
-            Label = x.Date.ToString("yyyy-MM-dd"), Count = x.Count, Value = x.Value
+            Label = x.Key.ToString("yyyy-MM-dd"),
+            Count = x.Count(),
+            Value = x.Sum(o => o.Total)
         }).ToList();
 
         var topProducts = await context.OrderItems.AsNoTracking()
@@ -211,7 +215,7 @@ public class AdminController(
 
     [HttpGet("products")]
     public async Task<ActionResult<PagedResult<AdminProductDto>>> GetProducts(
-        string? search = null, int? categoryId = null, bool? active = null, bool includeArchived = false,
+        string? search = null, int? categoryId = null, bool? active = null, bool includeArchived = true,
         string sort = "name", int page = 1, int pageSize = 20)
     {
         (page, pageSize) = NormalizePage(page, pageSize);
@@ -239,7 +243,8 @@ public class AdminController(
     [HttpPost("products")]
     public async Task<ActionResult<AdminProductDto>> CreateProduct(AdminProductUpsertDto dto)
     {
-        if (await context.Products.AnyAsync(x => x.Sku == dto.Sku)) return Conflict("SKU already exists.");
+        var sku = string.IsNullOrWhiteSpace(dto.Sku) ? GenerateSku() : dto.Sku.Trim();
+        if (await context.Products.AnyAsync(x => x.Sku == sku)) return Conflict("Product identifier already exists.");
         await using var transaction = context.Database.IsRelational()
             ? await context.Database.BeginTransactionAsync(IsolationLevel.Serializable)
             : null;
@@ -247,7 +252,7 @@ public class AdminController(
         var brand = await GetOrCreateBrand(dto.Brand);
         var product = new Product
         {
-            Name = dto.Name.Trim(), Description = dto.Description.Trim(), Sku = dto.Sku.Trim(),
+            Name = dto.Name.Trim(), Description = dto.Description.Trim(), Sku = sku,
             Price = dto.Price, PictureUrl = dto.PictureUrl, Type = category.Name, Brand = brand.Name,
             QuantityInStock = dto.Stock, Unit = dto.Unit.Trim(), IsActive = dto.IsActive,
             CategoryId = category.Id, BrandId = brand.Id
@@ -271,7 +276,8 @@ public class AdminController(
     {
         var product = await context.Products.Include(x => x.Inventory).FirstOrDefaultAsync(x => x.Id == id);
         if (product == null) return NotFound();
-        if (await context.Products.AnyAsync(x => x.Id != id && x.Sku == dto.Sku)) return Conflict("SKU already exists.");
+        var sku = string.IsNullOrWhiteSpace(dto.Sku) ? product.Sku : dto.Sku.Trim();
+        if (await context.Products.AnyAsync(x => x.Id != id && x.Sku == sku)) return Conflict("Product identifier already exists.");
         await using var transaction = context.Database.IsRelational()
             ? await context.Database.BeginTransactionAsync(IsolationLevel.Serializable)
             : null;
@@ -281,7 +287,7 @@ public class AdminController(
         var priceChanged = previousPrice != dto.Price;
         product.Name = dto.Name.Trim();
         product.Description = dto.Description.Trim();
-        product.Sku = dto.Sku.Trim();
+        product.Sku = sku;
         product.Price = dto.Price;
         product.PictureUrl = dto.PictureUrl;
         product.Type = category.Name;
@@ -337,7 +343,7 @@ public class AdminController(
 
     [HttpPost("products/images")]
     [RequestSizeLimit(5_242_880)]
-    public async Task<ActionResult<object>> UploadProductImage(IFormFile file)
+    public async Task<ActionResult<object>> UploadProductImage([FromForm] IFormFile file)
     {
         if (file.Length == 0 || file.Length > 5_242_880) return BadRequest("Image must be between 1 byte and 5 MB.");
         await using var stream = file.OpenReadStream();
@@ -405,8 +411,16 @@ public class AdminController(
         if (!string.IsNullOrWhiteSpace(search))
             query = query.Where(x => x.BuyerEmail.Contains(search) || x.Id.ToString().Contains(search));
         if (status.HasValue) query = query.Where(x => x.Status == status);
-        if (from.HasValue) query = query.Where(x => x.OrderDate >= from.Value);
-        if (to.HasValue) query = query.Where(x => x.OrderDate < to.Value.Date.AddDays(1));
+        if (from.HasValue)
+        {
+            var fromUtc = applicationTime.ToUtc(from.Value.Date);
+            query = query.Where(x => x.OrderDate >= fromUtc);
+        }
+        if (to.HasValue)
+        {
+            var toUtc = applicationTime.ToUtc(to.Value.Date.AddDays(1));
+            query = query.Where(x => x.OrderDate < toUtc);
+        }
         query = sort == "oldest" ? query.OrderBy(x => x.OrderDate) : query.OrderByDescending(x => x.OrderDate);
         var total = await query.CountAsync();
         var orders = await query.Skip((page - 1) * pageSize).Take(pageSize).ToListAsync();
@@ -504,8 +518,16 @@ public class AdminController(
         var query = context.Orders.AsNoTracking().AsQueryable();
         if (!string.IsNullOrWhiteSpace(search))
             query = query.Where(x => x.BuyerEmail.Contains(search) || x.Id.ToString().Contains(search));
-        if (from.HasValue) query = query.Where(x => x.OrderDate >= from.Value);
-        if (to.HasValue) query = query.Where(x => x.OrderDate < to.Value.Date.AddDays(1));
+        if (from.HasValue)
+        {
+            var fromUtc = applicationTime.ToUtc(from.Value.Date);
+            query = query.Where(x => x.OrderDate >= fromUtc);
+        }
+        if (to.HasValue)
+        {
+            var toUtc = applicationTime.ToUtc(to.Value.Date.AddDays(1));
+            query = query.Where(x => x.OrderDate < toUtc);
+        }
         if (!string.IsNullOrWhiteSpace(status))
         {
             if (status.Equals("Collected", StringComparison.OrdinalIgnoreCase))
@@ -530,16 +552,19 @@ public class AdminController(
     [HttpGet("reports")]
     public async Task<ActionResult<AdminReportDto>> GetReports(DateTime? from = null, DateTime? to = null)
     {
-        var start = (from ?? DateTime.UtcNow.Date.AddDays(-29)).Date;
-        var end = (to ?? DateTime.UtcNow.Date).Date.AddDays(1);
-        if (start >= end || end.Subtract(start).TotalDays > 366) return BadRequest("Date range must be between 1 and 366 days.");
-        var query = context.Orders.AsNoTracking().Where(x => x.OrderDate >= start && x.OrderDate < end);
-        var salesRows = await query.Where(x => x.Status == OrderStatus.Delivered)
-            .GroupBy(x => x.OrderDate.Date)
-            .Select(x => new { Date = x.Key, Count = x.Count(), Value = x.Sum(o => o.Total) })
-            .OrderBy(x => x.Date).ToListAsync();
+        var localToday = applicationTime.ToDisplayTime(applicationTime.UtcNow).Date;
+        var startLocal = (from ?? localToday.AddDays(-29)).Date;
+        var endLocal = (to ?? localToday).Date.AddDays(1);
+        if (startLocal >= endLocal || endLocal.Subtract(startLocal).TotalDays > 366)
+            return BadRequest("Date range must be between 1 and 366 days.");
+        var startUtc = applicationTime.ToUtc(startLocal);
+        var endUtc = applicationTime.ToUtc(endLocal);
+        var query = context.Orders.AsNoTracking()
+            .Where(x => x.OrderDate >= startUtc && x.OrderDate < endUtc);
+        var deliveredSales = await query.Where(x => x.Status == OrderStatus.Delivered)
+            .Select(x => new { x.OrderDate, x.Total }).ToListAsync();
         var top = await context.OrderItems.AsNoTracking()
-            .Where(x => x.Order != null && x.Order.OrderDate >= start && x.Order.OrderDate < end &&
+            .Where(x => x.Order != null && x.Order.OrderDate >= startUtc && x.Order.OrderDate < endUtc &&
                 x.Order.Status != OrderStatus.Cancelled && x.Order.Status != OrderStatus.Failed &&
                 x.Order.Status != OrderStatus.Refunded)
             .GroupBy(x => new { x.ProductId, x.ProductName })
@@ -550,15 +575,20 @@ public class AdminController(
             }).OrderByDescending(x => x.Quantity).Take(10).ToListAsync();
         return Ok(new AdminReportDto
         {
-            From = start, To = end.AddDays(-1),
+            From = startLocal, To = endLocal.AddDays(-1),
             OrderCount = await query.CountAsync(),
             Revenue = await query.Where(x => x.Status == OrderStatus.Delivered).SumAsync(x => x.Total),
             CodOrders = await query.CountAsync(x => x.PaymentMethod == "COD"),
             CancelledOrders = await query.CountAsync(x => x.Status == OrderStatus.Cancelled),
-            SalesTrend = salesRows.Select(x => new ChartPointDto
-            {
-                Label = x.Date.ToString("yyyy-MM-dd"), Count = x.Count, Value = x.Value
-            }).ToList(),
+            SalesTrend = deliveredSales
+                .GroupBy(x => applicationTime.ToDisplayTime(x.OrderDate).Date)
+                .OrderBy(x => x.Key)
+                .Select(x => new ChartPointDto
+                {
+                    Label = x.Key.ToString("yyyy-MM-dd"),
+                    Count = x.Count(),
+                    Value = x.Sum(o => o.Total)
+                }).ToList(),
             TopProducts = top
         });
     }
@@ -735,6 +765,9 @@ public class AdminController(
 
     private static (int Page, int PageSize) NormalizePage(int page, int pageSize) =>
         (Math.Max(1, page), Math.Clamp(pageSize, 1, 100));
+
+    private static string GenerateSku() =>
+        $"NC-{Guid.NewGuid():N}"[..13].ToUpperInvariant();
 
     private static async Task<string?> DetectImageExtension(Stream stream)
     {

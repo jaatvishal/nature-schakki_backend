@@ -41,7 +41,10 @@ export class ProductDetailsComponent implements OnInit {
   }
 
   addToCart() {
-    if (!this.product) return;
+    if (!this.product || !Number.isInteger(this.quantity) || this.quantity < 1) {
+      this.snackbar.error('Enter a whole number of kilograms greater than zero');
+      return;
+    }
     this.cartService.addItem(this.product, this.quantity).subscribe({
       next: () => this.snackbar.success('Added to cart'),
       error: () => {},

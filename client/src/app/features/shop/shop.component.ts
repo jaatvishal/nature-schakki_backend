@@ -4,7 +4,7 @@ import { Product } from '../../shared/models/product';
 import { ProductItemComponent } from './product-item/product-item.component';
 import { MatDialog } from '@angular/material/dialog';
 import { FiltersDialogComponent } from './filters-dialog/filters-dialog.component';
-import { MatButton, MatIconButton } from '@angular/material/button';
+import { MatButton } from '@angular/material/button';
 import { MatIcon } from '@angular/material/icon';
 import { MatMenu, MatMenuTrigger } from '@angular/material/menu';
 import { MatListOption, MatSelectionList, MatSelectionListChange } from '@angular/material/list';
@@ -18,7 +18,7 @@ import { ActivatedRoute } from '@angular/router';
   selector: 'app-shop',
   imports: [ProductItemComponent, MatButton, MatIcon,
     MatMenu, MatSelectionList, MatListOption, MatMenuTrigger,
-    MatPaginator, FormsModule, MatIconButton],
+    MatPaginator, FormsModule],
   templateUrl: './shop.component.html',
   styleUrl: './shop.component.scss',
 })
@@ -54,9 +54,24 @@ export class ShopComponent implements OnInit {
        error: error => console.error(error)
      });
    }
-   onSearchChange(){
-   this.shopParams.pageNumber = 1; // reset to first page when search changes
-   this.getProducts();
+   onSearchChange() {
+     this.shopParams.search = this.shopParams.search.trim();
+     this.shopParams.pageNumber = 1;
+     this.getProducts();
+   }
+
+   onSearchInput(value: string) {
+     if (value.trim().length === 0) {
+       this.shopParams.search = '';
+       this.shopParams.pageNumber = 1;
+       this.getProducts();
+     }
+   }
+
+   clearSearch() {
+     this.shopParams.search = '';
+     this.shopParams.pageNumber = 1;
+     this.getProducts();
    }
    handlePageChange(event: PageEvent) {
      this.shopParams.pageNumber = event.pageIndex + 1;  

@@ -16,6 +16,7 @@ export class AccountService {
         id: r.userId, email: r.email,
         firstName: r.firstName || r.displayName?.split(' ')[0] || '',
         lastName: r.lastName || r.displayName?.split(' ')[1] || '',
+        phoneNumber: r.phoneNumber,
         roles: r.roles ?? [],
       } as User))
     );

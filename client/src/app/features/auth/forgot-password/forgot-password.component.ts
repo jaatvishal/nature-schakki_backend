@@ -36,7 +36,7 @@ export class ForgotPasswordComponent {
   submit() {
     if (this.form.invalid) return;
     this.auth.forgotPassword(this.form.value.email!).subscribe({
-      next: () => this.snackbar.success('Reset link sent if email exists'),
+      next: () => this.snackbar.success('If an account exists for this email, a password reset link has been sent.'),
       error: () => this.snackbar.error('Failed to send reset link'),
     });
   }

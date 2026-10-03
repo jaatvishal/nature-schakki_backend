@@ -12,7 +12,7 @@ import { CartService } from '../../core/services/cart.service';
 import { OrderService } from '../../core/services/order.service';
 import { SnackbarService } from '../../core/services/snackbar.service';
 import { DeliveryMethod, Order } from '../../shared/models/order';
-import { ORDER_STATUS_STEPS, orderStatusLabel } from '../../shared/constants/order-status';
+import { COD_ORDER_STATUS_STEPS, orderStatusLabel } from '../../shared/constants/order-status';
 
 @Component({
   selector: 'app-checkout',
@@ -30,9 +30,10 @@ export class CheckoutComponent implements OnInit {
   private snackbar = inject(SnackbarService);
 
   placing = signal(false);
+  restoring = signal(false);
   placedOrder = signal<Order | null>(null);
   deliveryMethods = signal<DeliveryMethod[]>([]);
-  statusSteps = ORDER_STATUS_STEPS;
+  statusSteps = COD_ORDER_STATUS_STEPS;
 
   addressForm = this.fb.group({
     firstName: ['', [Validators.required, Validators.minLength(2)]],
@@ -50,6 +51,26 @@ export class CheckoutComponent implements OnInit {
   paymentForm = this.fb.group({ paymentMethod: ['COD', Validators.required] });
 
   ngOnInit(): void {
+    const savedOrderId = sessionStorage.getItem(this.completedOrderKey());
+    if (savedOrderId) {
+      this.restoring.set(true);
+      this.orderService.getOrder(Number(savedOrderId)).subscribe({
+        next: order => {
+          this.finalizeCheckout(order);
+          this.restoring.set(false);
+        },
+        error: () => {
+          sessionStorage.removeItem(this.completedOrderKey());
+          this.restoring.set(false);
+          this.initializeCheckout();
+        },
+      });
+      return;
+    }
+    this.initializeCheckout();
+  }
+
+  private initializeCheckout() {
     const user = this.authService.currentUser();
     if (user) this.addressForm.patchValue({ firstName: user.firstName, lastName: user.lastName });
     this.cartService.getCart().subscribe({ error: () => this.router.navigateByUrl('/shop') });
@@ -75,7 +96,7 @@ export class CheckoutComponent implements OnInit {
   }
 
   placeOrder() {
-    if (this.addressForm.invalid || this.deliveryForm.invalid || this.placing()) return;
+    if (this.addressForm.invalid || this.deliveryForm.invalid || this.placing() || this.placedOrder()) return;
     this.placing.set(true);
     const a = this.addressForm.getRawValue();
     const street = a.landmark ? `${a.address1}, Near ${a.landmark}` : a.address1!;
@@ -88,13 +109,30 @@ export class CheckoutComponent implements OnInit {
       },
     }).subscribe({
       next: order => {
-        this.placedOrder.set(order);
+        sessionStorage.setItem(this.completedOrderKey(), order.id.toString());
+        this.finalizeCheckout(order);
         this.cartService.clearLocalCart();
         this.snackbar.success('Order placed!');
         this.placing.set(false);
       },
       error: () => { this.snackbar.error('Failed to place order'); this.placing.set(false); },
     });
+  }
+
+  continueShopping() {
+    sessionStorage.removeItem(this.completedOrderKey());
+    this.router.navigateByUrl('/shop');
+  }
+
+  private finalizeCheckout(order: Order) {
+    this.placedOrder.set(order);
+    this.addressForm.disable({ emitEvent: false });
+    this.deliveryForm.disable({ emitEvent: false });
+    this.paymentForm.disable({ emitEvent: false });
+  }
+
+  private completedOrderKey() {
+    return `completedCheckoutOrder:${this.authService.getUserId() ?? 'anonymous'}`;
   }
 
   isStatusActive(status: string, step: string) {

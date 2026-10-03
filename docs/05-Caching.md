@@ -28,6 +28,8 @@ Registration logic: `Infrastructure/InfrastructureServiceRegistration.cs`
 
 Interface: `Core/Interfaces/ICartService.cs`
 
+Controllers use `CartWorkflow` above this storage interface to enforce authenticated ownership, authoritative product prices, active/stock checks, configurable kg increments, duplicate merging and per-cart concurrency locks.
+
 | Method | Description |
 |--------|-------------|
 | `GetCartAsync(key)` | Retrieve cart by anonymous or session ID |
@@ -38,16 +40,16 @@ Interface: `Core/Interfaces/ICartService.cs`
 
 - Static `ConcurrentDictionary<string, string>` in `Infrastructure/Services/InMemoryCartStorage.cs`
 - JSON-serialized `ShoppingCart` objects
-- **Dev/single-instance only** — data lost on restart, not shared across instances
+- **Single-instance option** — data is lost on restart/deployment and is not shared across instances
 
 ### RedisCartStorage
 
 - `Infrastructure/Services/RedisCartStorage.cs`
 - Uses StackExchange.Redis `IDatabase`
-- Keys prefixed for cart isolation
-- **Required for production** multi-instance deployments
+- 30-day expiry
+- Recommended before restart persistence or scale-out is required
 
-Cart API: `API/Controllers/CartController.cs` — `GET/POST/DELETE /api/v1/cart?id={cartId}`
+Cart API includes backward-compatible GET/replace/clear plus authenticated `/items` add/set/remove endpoints. Authenticated cart ids come from JWT claims.
 
 ## ICacheService
 

@@ -10,6 +10,7 @@ public class AppIdentityDbContext(DbContextOptions<AppIdentityDbContext> options
 {
     public DbSet<Core.Entities.RefreshToken> RefreshTokens { get; set; }
     public DbSet<Core.Entities.EmailVerificationOtp> EmailVerificationOtps { get; set; }
+    public DbSet<Core.Entities.PasswordResetToken> PasswordResetTokens { get; set; }
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -28,6 +29,18 @@ public class AppIdentityDbContext(DbContextOptions<AppIdentityDbContext> options
             entity.HasOne<AppUser>()
                 .WithOne()
                 .HasForeignKey<Core.Entities.EmailVerificationOtp>(x => x.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        builder.Entity<Core.Entities.PasswordResetToken>(entity =>
+        {
+            entity.ToTable("PasswordResetTokens");
+            entity.Property(x => x.TokenHash).IsRequired().HasMaxLength(128);
+            entity.HasIndex(x => x.TokenHash).IsUnique();
+            entity.HasIndex(x => x.UserId);
+            entity.HasOne<AppUser>()
+                .WithMany()
+                .HasForeignKey(x => x.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
     }

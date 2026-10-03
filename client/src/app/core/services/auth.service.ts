@@ -17,7 +17,10 @@ export class AuthService {
   private userSignal = signal<User | null>(this.loadUserFromStorage());
 
   currentUser = computed(() => this.userSignal());
-  isLoggedIn = computed(() => !!this.getToken() && !!this.userSignal());
+  isLoggedIn = computed(() => {
+    const user = this.userSignal();
+    return !!user && !!this.getToken();
+  });
   isAdmin = computed(() => this.userSignal()?.roles?.includes('Admin') ?? false);
 
   getUserId(): number | null {
@@ -54,8 +57,8 @@ export class AuthService {
     return this.http.post<{ message: string }>(`${this.baseUrl}/forgot-password`, { email });
   }
 
-  resetPassword(email: string, token: string, newPassword: string) {
-    return this.http.post<{ message: string }>(`${this.baseUrl}/reset-password`, { email, token, newPassword });
+  resetPassword(token: string, newPassword: string) {
+    return this.http.post<{ message: string }>(`${this.baseUrl}/reset-password`, { token, newPassword });
   }
 
   refreshToken() {
@@ -102,6 +105,7 @@ export class AuthService {
       displayName: response.displayName,
       firstName: response.firstName || parts[0] || response.email,
       lastName: response.lastName || (parts[1] ?? ''),
+      phoneNumber: response.phoneNumber,
       roles: response.roles ?? [],
       token: response.token,
     };

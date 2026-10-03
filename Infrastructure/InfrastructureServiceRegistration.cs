@@ -51,6 +51,7 @@ public static class InfrastructureServiceRegistration
         services.AddScoped<IUnitOfWork, UnitOfWork>();
         services.AddScoped<IProductRespository, ProductRepository>();
         services.AddScoped<IProductSearchService, SqlProductSearchService>();
+        services.AddSingleton<IApplicationTimeZone, IndiaTimeZoneService>();
         services.AddScoped<IOrderService, OrderService>();
         services.AddScoped<IInventoryService, InventoryService>();
         services.AddScoped<ITokenService, TokenService>();
@@ -60,8 +61,12 @@ public static class InfrastructureServiceRegistration
         services.AddScoped<IAuditService, AuditService>();
         services.AddScoped<IPaymentService, StripePaymentService>();
         services.Configure<EmailOptions>(config.GetSection(EmailOptions.SectionName));
+        services.Configure<PasswordResetOptions>(config.GetSection(PasswordResetOptions.SectionName));
+        services.Configure<CartOptions>(config.GetSection(CartOptions.SectionName));
         services.Configure<EmailVerificationOptions>(config.GetSection(EmailVerificationOptions.SectionName));
         services.AddScoped<IEmailVerificationService, EmailVerificationService>();
+        services.AddScoped<IPasswordResetService, PasswordResetService>();
+        services.AddScoped<ICartWorkflow, CartWorkflow>();
         services.AddScoped<IEmailService>(provider =>
         {
             var emailOptions = config.GetSection(EmailOptions.SectionName).Get<EmailOptions>() ?? new();

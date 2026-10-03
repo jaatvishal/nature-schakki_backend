@@ -5,12 +5,11 @@ using Core.Interfaces;
 using Infrastructure.Data;
 using Infrastructure.Identity;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
-using System.Text;
 
 namespace API.Controllers;
 
@@ -21,10 +20,9 @@ public class AccountController(
     UserManager<AppUser> userManager,
     SignInManager<AppUser> signInManager,
     ITokenService tokenService,
-    IEmailService emailService,
+    IPasswordResetService passwordResetService,
     IEmailVerificationService emailVerificationService,
-    AppIdentityDbContext identityContext,
-    IConfiguration config) : ControllerBase
+    AppIdentityDbContext identityContext) : ControllerBase
 {
     [HttpPost("register")]
     [AllowAnonymous]
@@ -190,32 +188,18 @@ public class AccountController(
     }
 
     [HttpPost("forgot-password")]
-    public async Task<IActionResult> ForgotPassword(ForgotPasswordDto dto)
+    [EnableRateLimiting("password-reset")]
+    public async Task<IActionResult> ForgotPassword(ForgotPasswordDto dto, CancellationToken cancellationToken)
     {
-        var user = await userManager.FindByEmailAsync(dto.Email);
-        if (user == null) return Ok(new { message = "If the email exists, a reset link was sent." });
-
-        var token = await userManager.GeneratePasswordResetTokenAsync(user);
-        var encoded = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(token));
-        var resetUrl = $"{config["ClientUrl"] ?? "http://localhost:4200"}/auth/reset-password?email={Uri.EscapeDataString(dto.Email)}&token={encoded}";
-
-        await emailService.SendEmailAsync(user.Email!,
-            "Reset your password",
-            $"Reset your password: {resetUrl}");
-
-        return Ok(new { message = "If the email exists, a reset link was sent." });
+        await passwordResetService.RequestAsync(dto.Email, cancellationToken);
+        return Ok(new { message = "If an account exists for this email, a password reset link has been sent." });
     }
 
     [HttpPost("reset-password")]
-    public async Task<IActionResult> ResetPassword(ResetPasswordDto dto)
+    [EnableRateLimiting("password-reset")]
+    public async Task<IActionResult> ResetPassword(ResetPasswordDto dto, CancellationToken cancellationToken)
     {
-        var user = await userManager.FindByEmailAsync(dto.Email);
-        if (user == null) return BadRequest("Invalid request.");
-
-        var token = Encoding.UTF8.GetString(WebEncoders.Base64UrlDecode(dto.Token));
-        var result = await userManager.ResetPasswordAsync(user, token, dto.NewPassword);
-        if (!result.Succeeded) return BadRequest(result.Errors.Select(e => e.Description));
-
+        await passwordResetService.ResetAsync(dto.Token, dto.NewPassword, cancellationToken);
         return Ok(new { message = "Password reset successful." });
     }
 
@@ -230,6 +214,7 @@ public class AccountController(
             DisplayName = user.DisplayName,
             FirstName = parts.Length > 0 ? parts[0] : user.DisplayName,
             LastName = parts.Length > 1 ? parts[1] : string.Empty,
+            PhoneNumber = user.PhoneNumber,
             Roles = roles.ToList()
         };
 

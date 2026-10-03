@@ -9,7 +9,7 @@ A full-stack e-commerce platform for artisan flour and grain products — built 
 
 ## Overview
 
-Natures Chakki demonstrates production-grade e-commerce patterns: JWT authentication with refresh tokens, Stripe payments, inventory management, coupon validation, admin moderation, and pluggable Redis/Memory caching — all in a clean layered architecture suitable for portfolio and interview discussion.
+This branch contains the finalized customer/Admin application baseline: email OTP activation, reactive JWT sessions, secure password reset, claims-owned carts priced per kilogram, transactional COD checkout, inventory/order history and a role-protected Admin Portal. Azure single-App-Service deployment work continues on `cursor/azure-single-app-production-702b`.
 
 ```mermaid
 flowchart TB
@@ -44,14 +44,14 @@ flowchart TB
 ## Features
 
 - **Catalog** — Paginated product listing with brand/type filters and specifications pattern
-- **Cart** — Anonymous carts with Memory or Redis backing (`CacheProvider`)
-- **Orders** — Stock reservation, delivery methods, order lifecycle management
-- **Payments** — Stripe Payment Intents with webhook confirmation (mock mode for dev)
+- **Cart** — Claims-owned customer carts, trusted database prices, kg validation, duplicate merging, Memory/Redis storage
+- **Orders** — Finalized transactional COD checkout, stock deduction/reversal, delivery timeline
+- **Payments** — COD is active; Stripe backend/webhooks remain future online-payment capability
 - **Coupons** — Percentage and fixed discounts with usage limits
 - **Wishlist** — Per-user saved products
 - **Reviews** — Customer reviews with admin moderation
-- **Admin** — Product, order, coupon, and review management
-- **Auth** — Identity, JWT, refresh tokens, role-based access (Admin / Customer)
+- **Admin** — Dashboard, customers, products/images, categories, orders, inventory, COD payments, reports, audit and alerts
+- **Auth** — OTP activation, reactive JWT/refresh session, hashed single-use password reset, Admin/Customer roles
 - **Order tracking** — Customer and Admin status timelines
 
 ## Tech Stack
@@ -106,19 +106,14 @@ API: https://localhost:5001 · Swagger: https://localhost:5001/swagger
 ### 3. Run the frontend
 
 ```bash
-cd client && npm install && npm start
+cd client && npm ci && npm start
 ```
 
 App: http://localhost:4200
 
 ### 4. Login
 
-| Role | Email | Password |
-|------|-------|----------|
-| Admin | admin@natureschakki.com | Admin@123! |
-| Customer | customer@natureschakki.com | Customer@123! |
-
-Migrations and seed data run automatically on first API start in Development.
+Roles are created by `IdentitySeed`. Optional users are created only when `SeedUsers:Enabled=true` and credentials are supplied through User Secrets/environment variables; no default credentials are documented or required.
 
 ## Configuration
 
@@ -142,10 +137,10 @@ Copy `.env.example` for local environment variable overrides.
 
 ```bash
 dotnet test Tests/Tests.csproj
-cd client && npm test
+cd client && npm test -- --watch=false
 ```
 
-22 automated tests + documented E2E scenarios. See [docs/07-Testing.md](docs/07-Testing.md).
+36 backend tests and 17 Angular tests pass on this branch. See [docs/07-Testing.md](docs/07-Testing.md).
 
 ## Documentation
 

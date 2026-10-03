@@ -8,7 +8,7 @@ export type HeaderItemConfig = {
 export const HEADER_CONFIG: HeaderItemConfig[] = [
   { id: 'logo', enabled: true },
   { id: 'nav', enabled: true },
-  { id: 'search', enabled: true },
+  { id: 'search', enabled: false },
   { id: 'cart', enabled: true },
   { id: 'user-menu', enabled: true },
 ];

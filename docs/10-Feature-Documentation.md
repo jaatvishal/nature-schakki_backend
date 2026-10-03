@@ -2,6 +2,10 @@
 
 End-to-end feature reference for the Natures Chakki e-commerce platform.
 
+## Date and time
+
+Database/security timestamps and logs remain UTC. API JSON emits explicit UTC values even when EF returns `DateTimeKind.Unspecified`. Angular globally renders `DatePipe` values in IST (`UTC+05:30`), while Admin report/date-filter boundaries use the named `Asia/Kolkata` `TimeZoneInfo` service.
+
 ## Catalog
 
 **Backend:** `ProductController` (`/api/product`), `SqlProductSearchService`
@@ -16,9 +20,11 @@ End-to-end feature reference for the Natures Chakki e-commerce platform.
 
 **Frontend:** `client/src/app/features/shop/`
 
-- `shop.component.ts` — product grid with filters
-- `product-details.component.ts` — detail page with add-to-cart
-- `product-item.component.ts` — card component
+- `shop.component.ts` — responsive grid, search with automatic empty/clear reset, filters and sorting
+- `product-details.component.ts` — per-kg price, kg quantity/total and add-to-cart
+- `product-item.component.ts` — compact per-kg product card
+
+The header search is removed; catalog search remains on Shop.
 
 **Specification pattern:** `ProductSpecification`, `ProductSpecParams` in `Core/Specifications/`
 
@@ -33,8 +39,10 @@ End-to-end feature reference for the Natures Chakki e-commerce platform.
 | `GET /api/v1/cart?id={cartId}` | Get cart (anonymous ID from localStorage) |
 | `POST /api/v1/cart` | Create/update cart |
 | `DELETE /api/v1/cart?id={cartId}` | Clear cart |
+| `POST /api/v1/cart/items` | Authenticated add/set quantity in kg |
+| `DELETE /api/v1/cart/items/{productId}` | Authenticated item removal |
 
-Cart stored in Memory or Redis (`CacheProvider`). Not in SQL.
+Cart stored in Memory or Redis (`CacheProvider`). Not in SQL. `Product.Price` is the authoritative price per kilogram. The API recalculates every line as `price per kg × quantity kg`, ignores client-submitted prices, merges duplicate products, and validates quantity using `Cart` configuration. The header badge counts distinct products, not total kilograms.
 
 **Frontend:**
 
@@ -64,7 +72,7 @@ Cart stored in Memory or Redis (`CacheProvider`). Not in SQL.
 5. In a serializable relational transaction, persist the COD order/items and deduct inventory
 6. Commit, then clear the authenticated user's cart
 
-Checkout currently supports **Cash on Delivery only**. A single generic Standard Delivery option is exposed; provider-specific UPS seed options are no longer shown.
+Checkout supports **Cash on Delivery only**. It becomes read-only after placement, resists duplicate submissions and restores confirmation after refresh. Standard Delivery is within 7 days for Delhi NCR/Ghaziabad.
 
 **Order lifecycle:** `Pending` → `PaymentReceived` (Paid) → `Processing` → `Packed` → `Shipped` → `OutForDelivery` → `Delivered`, plus `Cancelled`, `Refunded`, `Failed`. COD skips to `Processing`; Stripe webhook handling remains available for future online checkout. Admin updates delivery status and customers see the persisted timeline.
 
@@ -82,9 +90,7 @@ Checkout currently supports **Cash on Delivery only**. A single generic Standard
 
 See [06-Payments.md](./06-Payments.md) for full Stripe flow.
 
-**Frontend:** Checkout integrates payment intent creation after order placement.
-
-Mock mode available for development without Stripe keys.
+Angular does not create payment intents. Stripe remains backend-only future capability; COD is Pending before delivery, Paid when Delivered and Failed when cancelled/failed.
 
 ---
 
@@ -116,7 +122,7 @@ Mock mode available for development without Stripe keys.
 
 See [11-Admin-Portal.md](./11-Admin-Portal.md) for API behavior, image-storage architecture, security boundaries, and operational flows.
 
-**Access:** Login as `admin@natureschakki.com` / `Admin@123!` → redirects to `/admin` with welcome message
+**Access:** Accounts with the Admin role redirect to `/admin`; credentials are externally configured.
 
 ---
 
@@ -184,7 +190,8 @@ Admin creates coupons via `/api/v1/admin/coupons`.
 - Profile via `GET /api/v1/account/current`
 - Registration requires expiring email OTP verification before login
 - OTP resend has cooldown, failed-attempt limits, and invalidates prior codes
-- Addresses managed through account-related endpoints and `Address` entity
+- Profile displays name, email, phone when present and latest order delivery address
+- The Addresses UI exists, but dedicated Account address CRUD API endpoints are not currently implemented
 
 **Frontend:** `client/src/app/features/account/`
 
@@ -200,6 +207,7 @@ Admin creates coupons via `/api/v1/admin/coupons`.
 - `ReserveStockAsync` / `ReleaseStockAsync` on order create/cancel
 - `AdjustStockAsync` for admin stock updates
 - Synced with `Product.QuantityInStock` and `Inventory` table
+- COD placement deducts stock immediately; cancellation restores it and records inventory movement
 
 ---
 

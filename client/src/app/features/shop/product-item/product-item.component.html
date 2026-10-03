@@ -4,7 +4,7 @@
     <mat-card-content class="!p-4">
       <p class="text-xs text-amber-700 font-medium uppercase">{{ product.brand }}</p>
       <h2 class="text-sm font-semibold mt-1 line-clamp-2">{{ product.name }}</h2>
-      <p class="font-bold text-lg mt-2">{{ product.price | currency: 'INR' }}</p>
+      <p class="font-bold text-lg mt-2">{{ product.price | currency: 'INR' }} / Kg</p>
     </mat-card-content>
     <div class="px-4 pb-4">
       <button mat-stroked-button class="w-full" (click)="addToCart($event)">

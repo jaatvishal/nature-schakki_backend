@@ -5,6 +5,7 @@ using Core.Enums;
 using Core.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Collections.Concurrent;
 using System.Security.Claims;
 
 namespace API.Controllers;
@@ -17,6 +18,8 @@ public class OrdersController(
     IOrderService orderService,
     ICartService cartService) : ControllerBase
 {
+    private static readonly ConcurrentDictionary<int, SemaphoreSlim> CheckoutLocks = new();
+
     [HttpPost]
     public async Task<ActionResult<OrderDto>> CreateOrder(CreateOrderDto dto)
     {
@@ -24,6 +27,10 @@ public class OrdersController(
             return BadRequest("Only Cash on Delivery is currently supported.");
 
         var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        var checkoutLock = CheckoutLocks.GetOrAdd(userId, _ => new SemaphoreSlim(1, 1));
+        await checkoutLock.WaitAsync();
+        try
+        {
         var email = User.FindFirstValue(ClaimTypes.Email)!;
         var cartId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
         var cart = await cartService.GetCartAsync(cartId);
@@ -48,6 +55,11 @@ public class OrdersController(
 
         await cartService.DeleteCartAsync(cartId);
         return Ok(MapOrder(await orderService.GetOrderByIdAsync(order.Id, userId) ?? order));
+        }
+        finally
+        {
+            checkoutLock.Release();
+        }
     }
 
     [HttpGet]
@@ -80,7 +92,15 @@ public class OrdersController(
         OrderDate = order.OrderDate,
         Status = order.Status.ToString(),
         PaymentMethod = order.PaymentMethod,
-        PaymentStatus = "Pending",
+        PaymentStatus = order.PaymentMethod.Equals("COD", StringComparison.OrdinalIgnoreCase)
+            ? order.Status == OrderStatus.Delivered
+                ? "Paid"
+                : order.Status is OrderStatus.Cancelled or OrderStatus.Failed
+                    ? "Failed"
+                    : "Pending"
+            : order.Status == OrderStatus.PaymentReceived
+                ? "Paid"
+                : "Pending",
         ShipToAddress = new AddressDto
         {
             FirstName = order.ShipToAddress.FirstName,

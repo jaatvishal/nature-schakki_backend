@@ -13,7 +13,7 @@ export type Order = {
   buyerEmail: string;
   orderDate: string;
   shipToAddress: Address;
-  deliveryMethod?: { shortName: string };
+  deliveryMethod?: { shortName: string; description?: string; deliveryTimeDays?: number; price?: number };
   subtotal: number;
   deliveryCost: number;
   discount: number;

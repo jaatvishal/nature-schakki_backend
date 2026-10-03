@@ -1,6 +1,6 @@
 # Admin Portal
 
-The Admin Portal extends the existing modular-monolith architecture and is built on the current `cursor/otp-cod-on-latest-ui-702b` customer workflow.
+The Admin Portal is fully included in `cursor/auth-cart-security-fixes-702b`, on top of the OTP/COD/customer workflow. Its child `cursor/azure-single-app-production-702b` adds production hosting without changing these Admin contracts.
 
 ## Security Boundary
 
@@ -46,11 +46,10 @@ Angular renders the returned projection and does not download complete tables to
 
 ```text
 Admin upload → signature/size validation → IFileStorageService
-    ├── LocalFileStorage (current Development provider)
-    └── Azure Blob implementation (future Production provider)
+    └── LocalFileStorage (implemented on this branch)
 ```
 
-Current validation permits genuine JPEG, PNG, or WebP signatures up to 5 MB. Original client paths are discarded, generated names are used, and local deletion is constrained to `wwwroot`. `UseStaticFiles` serves local development uploads. Set `FileStorage:Provider` to select an implementation; storage credentials must come from secure configuration.
+Current validation permits genuine JPEG, PNG or WebP signatures up to 5 MB. Original paths are discarded, generated names are used and deletion is constrained to the storage root. Internal SKU generation is automatic. The Azure child branch adds persistent App Service local storage and an optional Azure Blob provider.
 
 ## Order, Inventory, Payment, and Audit Flow
 
@@ -62,7 +61,7 @@ Customer places COD order
   → validated OrderStatusRules transition
   → OrderStatusHistory records admin and timestamp
   → cancellation restores stock with movement history
-  → delivered COD appears as Collected
+  → delivered COD appears as Collected to Admin and Paid to Customer
   → AuditLog records significant admin actions
 ```
 

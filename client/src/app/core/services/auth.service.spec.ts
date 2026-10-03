@@ -37,6 +37,7 @@ describe('AuthService', () => {
       refreshToken: 'refresh-token',
     };
 
+    expect(service.isLoggedIn()).toBe(false);
     service.login({ email: 'test@test.com', password: 'Pass@123' }).subscribe();
 
     const req = httpMock.expectOne(`${environment.apiUrl}/v1/account/login`);
@@ -57,6 +58,23 @@ describe('AuthService', () => {
 
     expect(service.isLoggedIn()).toBe(false);
     expect(localStorage.getItem('token')).toBeNull();
+  });
+
+  it('routes an authenticated admin to the admin dashboard', () => {
+    service.login({ email: 'admin@test.com', password: 'Pass@123' }).subscribe();
+    httpMock.expectOne(`${environment.apiUrl}/v1/account/login`).flush({
+      userId: 2,
+      email: 'admin@test.com',
+      displayName: 'Admin User',
+      firstName: 'Admin',
+      lastName: 'User',
+      roles: ['Admin'],
+      token: 'admin-token',
+      refreshToken: 'admin-refresh',
+    });
+
+    expect(service.isAdmin()).toBe(true);
+    expect(service.getPostLoginRoute()).toBe('/admin');
   });
 
   it('restores and validates authentication after refresh', async () => {

@@ -1,7 +1,29 @@
 <div class="max-w-3xl mx-auto py-8 px-4">
   <h1 class="text-2xl font-bold mb-6">Checkout</h1>
 
-  @if (!cartService.cart()?.items?.length && !placedOrder()) {
+  @if (restoring()) {
+    <p class="text-center py-16 text-gray-500">Loading order confirmation...</p>
+  } @else if (placedOrder(); as o) {
+    <div class="p-6 bg-green-50 rounded-xl border border-green-200">
+      <p class="font-bold text-green-800 text-lg">Order #{{ o.id }} placed successfully!</p>
+      <p class="text-sm text-gray-600 mb-4">{{ o.orderDate | date:'medium' }}</p>
+      <p class="text-sm text-green-800 mb-6">This checkout is finalized. Address, delivery, and payment details can no longer be changed.</p>
+      <div class="flex justify-between mb-2">
+        @for (s of statusSteps; track s; let i = $index) {
+          <div class="text-center flex-1">
+            <div class="w-8 h-8 mx-auto rounded-full text-xs flex items-center justify-center"
+              [class]="isStatusActive(o.status, s) ? 'bg-amber-600 text-white' : 'bg-gray-200'">{{ i+1 }}</div>
+            <span class="text-xs block mt-1">{{ label(s) }}</span>
+          </div>
+        }
+      </div>
+      <p class="font-medium mt-4">Status: <span class="text-amber-700">{{ label(o.status) }}</span></p>
+      <div class="flex flex-wrap gap-2 mt-4">
+        <a mat-flat-button color="primary" [routerLink]="['/account/orders', o.id]">View Full Details</a>
+        <button mat-stroked-button type="button" (click)="continueShopping()">Continue Shopping</button>
+      </div>
+    </div>
+  } @else if (!cartService.cart()?.items?.length) {
     <div class="text-center py-16 text-gray-500">
       <p class="mb-4">Your cart is empty</p>
       <a mat-flat-button color="primary" routerLink="/shop">Continue Shopping</a>
@@ -37,9 +59,10 @@
         <form [formGroup]="deliveryForm" class="mt-4">
           <mat-radio-group formControlName="deliveryMethodId" class="flex flex-col gap-3">
             @for (m of deliveryMethods(); track m.id) {
-              <mat-radio-button [value]="m.id">{{ m.shortName }} — {{ m.deliveryTimeDays }} days ({{ m.price | currency:'INR' }})</mat-radio-button>
+              <mat-radio-button [value]="m.id">{{ m.shortName }} — within {{ m.deliveryTimeDays }} days ({{ m.price | currency:'INR' }})</mat-radio-button>
             }
           </mat-radio-group>
+          <p class="text-sm text-amber-700 mt-3">Currently available in Delhi NCR and Ghaziabad areas only.</p>
         </form>
         <div class="mt-4 flex gap-2">
           <button mat-stroked-button matStepperPrevious>Back</button>
@@ -70,33 +93,13 @@
           <p><strong>Payment:</strong> {{ paymentForm.value.paymentMethod | uppercase }}</p>
           <p class="text-xl font-bold">Total: {{ total() | currency:'INR' }}</p>
         </div>
-        @if (!placedOrder()) {
-          <div class="mt-4 flex gap-2">
-            <button mat-stroked-button matStepperPrevious [disabled]="placing()">Back</button>
-            <button mat-flat-button color="primary" (click)="placeOrder()" [disabled]="placing()">
-              {{ placing() ? 'Placing...' : 'Place COD Order' }}
-            </button>
-          </div>
-        }
+        <div class="mt-4 flex gap-2">
+          <button mat-stroked-button matStepperPrevious [disabled]="placing()">Back</button>
+          <button mat-flat-button color="primary" (click)="placeOrder()" [disabled]="placing()">
+            {{ placing() ? 'Placing...' : 'Place COD Order' }}
+          </button>
+        </div>
       </mat-step>
     </mat-stepper>
-
-    @if (placedOrder(); as o) {
-      <div class="mt-6 p-6 bg-green-50 rounded-xl border border-green-200">
-        <p class="font-bold text-green-800 text-lg">Order #{{ o.id }} placed successfully!</p>
-        <p class="text-sm text-gray-600 mb-4">{{ o.orderDate | date:'medium' }}</p>
-        <div class="flex justify-between mb-2">
-          @for (s of statusSteps; track s; let i = $index) {
-            <div class="text-center flex-1">
-              <div class="w-8 h-8 mx-auto rounded-full text-xs flex items-center justify-center"
-                [class]="isStatusActive(o.status, s) ? 'bg-amber-600 text-white' : 'bg-gray-200'">{{ i+1 }}</div>
-              <span class="text-xs block mt-1">{{ label(s) }}</span>
-            </div>
-          }
-        </div>
-        <p class="font-medium mt-4">Status: <span class="text-amber-700">{{ label(o.status) }}</span></p>
-        <a mat-flat-button color="primary" [routerLink]="['/account/orders', o.id]" class="mt-4">View Full Details</a>
-      </div>
-    }
   }
 </div>

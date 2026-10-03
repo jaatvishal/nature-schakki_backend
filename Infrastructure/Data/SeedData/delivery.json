@@ -1,8 +1,8 @@
 [
   {
     "ShortName": "Standard Delivery",
-    "Description": "Standard local delivery",
-    "DeliveryTimeDays": 5,
+    "Description": "Delivery within 7 days. Available in Delhi NCR and Ghaziabad areas only.",
+    "DeliveryTimeDays": 7,
     "Price": 0
   }
 ]

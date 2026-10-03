@@ -1,6 +1,6 @@
 # Payments
 
-Payments are processed through **Stripe Payment Intents** with webhook confirmation and idempotent order status updates.
+The active customer checkout supports **Cash on Delivery (COD) only**. Stripe services, intent APIs and idempotent webhook handling remain implemented for a future online-payment UI, but Angular checkout does not currently invoke Stripe.
 
 ## Components
 
@@ -16,13 +16,13 @@ Payments are processed through **Stripe Payment Intents** with webhook confirmat
 
 | Key | Description |
 |-----|-------------|
-| `StripeSettings:PublishableKey` | Frontend Stripe.js key |
+| `StripeSettings:PublishableKey` | Reserved for a future online-payment frontend |
 | `StripeSettings:SecretKey` | Server-side API key |
 | `StripeSettings:WebhookSecret` | Webhook signing secret (`whsec_...`) |
 
 When `SecretKey` is empty or `sk_test_placeholder`, the API runs in **mock mode** and returns `pi_mock_{guid}` intents.
 
-## Payment Flow
+## Active COD flow
 
 ```mermaid
 sequenceDiagram
@@ -30,26 +30,19 @@ sequenceDiagram
     participant FE as Angular Checkout
     participant API as PaymentsController
     participant OS as OrderService
-    participant S as Stripe
     participant DB as StoreContext
 
-    U->>FE: Place order
+    U->>FE: Place COD order
     FE->>API: POST /api/v1/orders
     API->>OS: CreateOrderAsync
-    OS->>DB: Reserve inventory, save Order (Pending)
-    API-->>FE: Order ID
-
-    FE->>API: POST /api/v1/payments/create-intent/{orderId}
-    API->>S: PaymentIntent.Create(amount)
-    S-->>API: paymentIntentId
-    API->>DB: Order.PaymentIntentId = id
-    API-->>FE: { clientSecret, paymentIntentId }
-
-    U->>S: Confirm payment (Stripe.js)
-    S->>API: POST /api/v1/payments/webhook (payment_intent.succeeded)
-    API->>DB: Payment record + OrderStatus.PaymentReceived
-    API-->>S: 200 OK
+    OS->>DB: Recalculate prices, save order/items, deduct stock
+    API->>DB: Clear authenticated cart
+    API-->>FE: Processing order / COD Pending
+    Note over API,DB: Admin progresses Packed → Shipped → OutForDelivery → Delivered
+    DB-->>FE: Delivered COD displays Paid
 ```
+
+Order creation and stock movement execute transactionally. Duplicate submissions are serialized per customer and the second request sees an empty cart.
 
 ## API Endpoints
 
@@ -57,6 +50,8 @@ sequenceDiagram
 |--------|-------|------|-------------|
 | POST | `/api/v1/payments/create-intent/{orderId}` | Bearer | Creates Stripe intent for order total |
 | POST | `/api/v1/payments/webhook` | Anonymous | Stripe event handler |
+
+These endpoints are future online-payment capabilities. Current COD checkout uses `/api/v1/orders`.
 
 ## Webhook Handling
 
@@ -97,9 +92,15 @@ stripe listen --forward-to https://localhost:5001/api/v1/payments/webhook
 
 Relevant statuses (`Core/Enums/OrderStatus.cs`):
 
-`Pending` → `PaymentReceived` → `Processing` → `Shipped` → `Delivered`
+General lifecycle:
 
-Cancellation releases reserved inventory via `InventoryService`.
+`Pending` → `PaymentReceived` → `Processing` → `Packed` → `Shipped` → `OutForDelivery` → `Delivered`
+
+COD timeline:
+
+`Pending` → `Processing` → `Packed` → `Shipped` → `OutForDelivery` → `Delivered`
+
+COD is Pending before delivery, Paid when Delivered, and Failed when Cancelled/Failed. Cancellation restores deducted inventory.
 
 ## Security
 

@@ -20,7 +20,7 @@ Security controls across the Natures Chakki platform.
 
 ### JWT Secret Management
 
-- Development: `appsettings.json` → `JwtSettings:Key`
+- Development: User Secrets or `JwtSettings__Key`; an ephemeral key is generated only when omitted
 - Production: `JwtSettings__Key` from Azure Key Vault (min 256-bit random key)
 
 Never commit production keys. Rotate keys with a planned token invalidation window.
@@ -49,7 +49,7 @@ Global fixed-window limiter in `Program.cs`:
 - **100 requests per minute** per authenticated user name or host header
 - Returns `429 Too Many Requests`
 
-Consider tighter limits on auth endpoints (`/account/login`, `/account/register`) in production.
+Forgot/reset password additionally allows 5 requests per 15 minutes per source IP.
 
 ## Secrets & Configuration
 
@@ -62,7 +62,7 @@ Consider tighter limits on auth endpoints (`/account/login`, `/account/register`
 
 `.env` is gitignored (`.gitignore`). Use `.env.example` as a template.
 
-`SeedUsers` credentials are Development-only (`IdentitySeed` checks `IsDevelopment()`).
+User seeding is explicit through `SeedUsers:Enabled` and external credentials; no default credentials should be committed or displayed.
 
 ## Input Validation
 
@@ -73,6 +73,8 @@ Consider tighter limits on auth endpoints (`/account/login`, `/account/register`
 - **Admin DTOs** — dedicated write contracts prevent entity overposting
 
 Email OTP values are generated with a cryptographic RNG, stored only as salted hashes, replaced on resend, and never logged. SMTP credentials must be supplied through environment configuration or Key Vault.
+
+JWT, refresh-token, OTP and password-reset expiration remains UTC. IST conversion occurs only at API normalization/report and Angular display boundaries, so security lifetimes are unchanged.
 
 ## Error Handling
 
@@ -102,7 +104,8 @@ Email OTP values are generated with a cryptographic RNG, stored only as salted h
 | Data | Protection |
 |------|------------|
 | Passwords | Hashed by Identity |
-| Refresh tokens | Stored hashed-equivalent (opaque random), revocable |
+| Refresh tokens | Opaque random database records, rotated and revocable (currently stored as token values) |
+| Password reset tokens | SHA-256 hashes only; short-lived, replacement-revoked and single-use |
 | Payment data | PCI scope minimized — Stripe handles card data |
 | PII (email, address) | SQL encryption at rest (Azure SQL TDE) recommended |
 
