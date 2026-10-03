@@ -48,12 +48,13 @@ import { MatIcon } from '@angular/material/icon';
 })
 export class ContactComponent {
   contactInfo = [
-    { icon: 'email', label: 'Email', value: 'support@natureschakki.com', link: 'mailto:support@natureschakki.com' },
-    { icon: 'phone', label: 'Phone', value: '+91 98765 43210', link: 'tel:+919876543210' },
-    { icon: 'location_on', label: 'Address', value: '123 Grain Market, Jaipur, Rajasthan 302001', link: null },
+    { icon: 'email', label: 'Email', value: 'info@natureschakki.in', link: 'mailto:info@natureschakki.in' },
+    { icon: 'phone', label: 'Phone', value: '+91 9870514837', link: 'tel:+919870514837' },
+    { icon: 'phone', label: 'Alternate Phone', value: '+91 9818213553', link: 'tel:+919818213553' },
+    { icon: 'location_on', label: 'Address', value: 'P.No-11, Senga Enclave, Girdharpur Road, Chhapraula, G.B. Nagar 201009', link: null },
   ];
   socials = [
-    { name: 'Facebook', icon: 'facebook', url: 'https://facebook.com/natureschakki' },
+    { name: 'Facebook', icon: 'facebook', url: 'https://www.facebook.com/share/1C4tTjRKgx/?mibextid=wwXIfr' },
     { name: 'Instagram', icon: 'photo_camera', url: 'https://instagram.com/natureschakki' },
     { name: 'Twitter', icon: 'alternate_email', url: 'https://twitter.com/natureschakki' },
     { name: 'LinkedIn', icon: 'business', url: 'https://linkedin.com/company/natureschakki' },

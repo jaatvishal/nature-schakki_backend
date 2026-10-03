@@ -34,8 +34,10 @@ import { AuthService } from '../../core/services/auth.service';
               </a>
             }
           </div>
-          <p class="text-sm mt-4">support&#64;natureschakki.com</p>
-          <p class="text-sm">+91 98765 43210</p>
+          <p class="text-sm mt-4"><a href="mailto:info@natureschakki.in" class="hover:text-amber-400">info&#64;natureschakki.in</a></p>
+          <p class="text-sm"><a href="tel:+919870514837" class="hover:text-amber-400">+91 9870514837</a></p>
+          <p class="text-sm"><a href="tel:+919818213553" class="hover:text-amber-400">+91 9818213553</a></p>
+          <p class="text-sm mt-2">P.No-11, Senga Enclave, Girdharpur Road, Chhapraula, G.B. Nagar 201009</p>
         </div>
       </div>
       <div class="border-t border-gray-800 text-center text-xs py-4">
@@ -48,7 +50,7 @@ export class FooterComponent {
   auth = inject(AuthService);
   year = new Date().getFullYear();
   socials = [
-    { icon: 'facebook', label: 'Facebook', url: 'https://facebook.com/natureschakki' },
+    { icon: 'facebook', label: 'Facebook', url: 'https://www.facebook.com/share/1C4tTjRKgx/?mibextid=wwXIfr' },
     { icon: 'photo_camera', label: 'Instagram', url: 'https://instagram.com/natureschakki' },
     { icon: 'alternate_email', label: 'Twitter', url: 'https://twitter.com/natureschakki' },
     { icon: 'business', label: 'LinkedIn', url: 'https://linkedin.com/company/natureschakki' },
