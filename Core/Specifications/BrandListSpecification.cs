@@ -9,7 +9,8 @@ namespace Core.Specifications;
 
     public class BrandListSpecification  : BaseSpecification<Product,string>
     {
-        public BrandListSpecification() {
+        public BrandListSpecification() : base(x =>
+            x.IsActive && !x.IsArchived && (x.Category == null || x.Category.IsActive)) {
             AddSelect(x => x.Brand);
             ApplyDistinct();
         }

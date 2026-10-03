@@ -1,0 +1,19 @@
+
+.custom-badge .mat-badge-content {
+  background-color: #414ac8(45, 45, 193);
+  height: 20px;
+  width: 24px;
+  line-height: 24px;
+}
+
+.custom-badge .mat-icon
+{
+   font-size: 32px;
+   width: 32px;
+}
+
+a {
+ &.active {
+    color: #414ac8;
+  }
+}

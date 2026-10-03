@@ -1,0 +1,31 @@
+<div class="max-w-4xl mx-auto py-8">
+  <h1 class="text-2xl font-bold mb-6">My Wishlist</h1>
+
+  @if (products.length) {
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+      @for (product of products; track product.id) {
+        <div class="border rounded-lg overflow-hidden">
+          <a [routerLink]="['/shop', product.id]">
+            <img [src]="product.pictureUrl" [alt]="product.name" class="w-full h-48 object-cover" />
+          </a>
+          <div class="p-4">
+            <h2 class="font-semibold">{{ product.name }}</h2>
+            <p class="text-gray-600">{{ product.price | currency: 'INR' }}</p>
+            <div class="flex gap-2 mt-3">
+              <a mat-stroked-button [routerLink]="['/shop', product.id]">View</a>
+              <button mat-icon-button type="button" (click)="removeFromWishlist(product.id)" aria-label="Remove from wishlist">
+                <mat-icon>favorite</mat-icon>
+              </button>
+            </div>
+          </div>
+        </div>
+      }
+    </div>
+  } @else {
+    <div class="text-center py-16 text-gray-500">
+      <mat-icon class="text-6xl mb-4">favorite_border</mat-icon>
+      <p class="text-lg mb-4">Your wishlist is empty</p>
+      <a mat-flat-button color="primary" routerLink="/shop">Browse Products</a>
+    </div>
+  }
+</div>

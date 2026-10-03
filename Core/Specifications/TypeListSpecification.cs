@@ -9,7 +9,8 @@ namespace Core.Specifications;
 
     public class TypeListSpecification : BaseSpecification<Product,string>
     {
-        public TypeListSpecification()
+        public TypeListSpecification() : base(x =>
+            x.IsActive && !x.IsArchived && (x.Category == null || x.Category.IsActive))
         {
             AddSelect(x => x.Type);
             ApplyDistinct();

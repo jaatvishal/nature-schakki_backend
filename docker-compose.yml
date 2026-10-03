@@ -1,10 +1,72 @@
 services:
   sql:
     image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: natureschakki-sql
     environment:
       ACCEPT_EULA: "Y"
-      MSSQL_SA_PASSWORD: Admin@123
-    plateform: linux/amd64  
+      MSSQL_SA_PASSWORD: "${MSSQL_SA_PASSWORD:?Set MSSQL_SA_PASSWORD in .env}"
+    platform: linux/amd64
     ports:
       - "1433:1433"
-    
+    volumes:
+      - sql_data:/var/opt/mssql
+    healthcheck:
+      test: /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "$$MSSQL_SA_PASSWORD" -C -Q "SELECT 1" || exit 1
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  redis:
+    image: redis:7-alpine
+    container_name: natureschakki-redis
+    platform: linux/amd64
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: natureschakki-api
+    ports:
+      - "8080:8080"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__DefaultConnection: "Server=sql,1433;Database=NaturesChakki;User Id=sa;Password=${MSSQL_SA_PASSWORD};TrustServerCertificate=True"
+      ConnectionStrings__Redis: "redis:6379"
+      CacheProvider: "Redis"
+      JwtSettings__Key: "${JWT_SIGNING_KEY:?Set JWT_SIGNING_KEY in .env}"
+      JwtSettings__Issuer: "http://localhost:8080"
+      JwtSettings__Audience: "http://localhost:8080"
+      JwtSettings__DurationInMinutes: "60"
+      StripeSettings__SecretKey: "sk_test_placeholder"
+      StripeSettings__PublishableKey: "pk_test_placeholder"
+      StripeSettings__WebhookSecret: "whsec_placeholder"
+      SeedUsers__Enabled: "${SEED_USERS_ENABLED:-false}"
+      SeedUsers__AdminEmail: "${SEED_ADMIN_EMAIL:-}"
+      SeedUsers__AdminPassword: "${SEED_ADMIN_PASSWORD:-}"
+      SeedUsers__CustomerEmail: "${SEED_CUSTOMER_EMAIL:-}"
+      SeedUsers__CustomerPassword: "${SEED_CUSTOMER_PASSWORD:-}"
+    depends_on:
+      sql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+
+volumes:
+  sql_data:
+  redis_data:

@@ -3,77 +3,57 @@ using Core.Interfaces;
 using Microsoft.EntityFrameworkCore;
 
 namespace Infrastructure.Data;
+
 public class GenericRepository<T>(StoreContext context) : IGenericRepository<T> where T : BaseEntity
 {
-    public void Add(T entity)
-    {
-        context.Set<T>().Add(entity);
-    }
+    public void Add(T entity) => context.Set<T>().Add(entity);
 
-    public async Task<int> CountAsync(ISpecification<T> Spec)
+    public async Task<int> CountAsync(ISpecification<T> spec)
     {
-        var query = context.Set<T>().AsQueryable();
-        query = Spec.ApplyCritera(query); 
+        var query = context.Set<T>().AsNoTracking().AsQueryable();
+        query = spec.ApplyCritera(query);
         return await query.CountAsync();
     }
 
-    public bool Exits(int id)
-    {
-        return  context.Set<T>().Any(x=> x.Id == id); 
-    }
+    public bool Exits(int id) => context.Set<T>().Any(x => x.Id == id);
 
-    public async Task<T?> GetByIdAsync(int id)
-    {
-        return await context.Set<T>().FindAsync(id);
-    }
+    public async Task<T?> GetByIdAsync(int id) => await context.Set<T>().FindAsync(id);
 
-    public async Task<T?> GetEntityWithSpec(ISpecification<T> spec)
-    {
-        return await ApplySpecification(spec).FirstOrDefaultAsync();
-    }
+    public async Task<T?> GetEntityWithSpec(ISpecification<T> spec) =>
+        await ApplySpecification(spec, trackChanges: true).FirstOrDefaultAsync();
 
-    public async Task<TResult?> GetEntityWithSpec<TResult>(ISpecification<T, TResult> spec)
-    {
-        return await ApplySpecification(spec).FirstOrDefaultAsync();
-    }
+    public async Task<TResult?> GetEntityWithSpec<TResult>(ISpecification<T, TResult> spec) =>
+        await ApplySpecification(spec).FirstOrDefaultAsync();
 
-    public async Task<IReadOnlyList<T>> ListAllAsync()
-    {
-         return  await context.Set<T>().ToListAsync();
-    }
+    public async Task<IReadOnlyList<T>> ListAllAsync() =>
+        await context.Set<T>().AsNoTracking().ToListAsync();
 
-    public async Task<IReadOnlyList<T>> ListAsync(ISpecification<T> spec)
-    {
-        return await ApplySpecification(spec).ToListAsync();
-    }
+    public async Task<IReadOnlyList<T>> ListAsync(ISpecification<T> spec) =>
+        await ApplySpecification(spec).ToListAsync();
 
-    public async Task<IReadOnlyList<TResult>> ListAsync<TResult>(ISpecification<T, TResult> spec)
-    {
-        return await ApplySpecification(spec).ToListAsync(); 
-    }
+    public async Task<IReadOnlyList<TResult>> ListAsync<TResult>(ISpecification<T, TResult> spec) =>
+        await ApplySpecification(spec).ToListAsync();
 
-    public void Remove(T entity)
-    {
-        context.Set<T>().Remove(entity); 
-    }
+    public void Remove(T entity) => context.Set<T>().Remove(entity);
 
-    public async Task<bool> SaveAllAsync()
-    {
-        return await context.SaveChangesAsync() > 0;
-    }
+    public async Task<bool> SaveAllAsync() => await context.SaveChangesAsync() > 0;
 
     public void Update(T entity)
     {
+        entity.UpdatedAt = DateTime.UtcNow;
         context.Set<T>().Attach(entity);
-        context.Entry(entity).State= EntityState.Modified;
+        context.Entry(entity).State = EntityState.Modified;
     }
-    private IQueryable<T> ApplySpecification(ISpecification<T> spec)
+
+    private IQueryable<T> ApplySpecification(ISpecification<T> spec, bool trackChanges = false)
     {
-        return  SpecificationEvaluator<T>.GetQuery(context.Set<T>().AsQueryable(), spec);
+        var query = trackChanges ? context.Set<T>().AsQueryable() : context.Set<T>().AsNoTracking();
+        return SpecificationEvaluator<T>.GetQuery(query, spec);
     }
-    private IQueryable<TResult> ApplySpecification<TResult>(ISpecification<T,TResult> spec)
+
+    private IQueryable<TResult> ApplySpecification<TResult>(ISpecification<T, TResult> spec)
     {
-        return SpecificationEvaluator<T>.GetQuery<T,TResult>(context.Set<T>().AsQueryable(), spec);
+        var query = context.Set<T>().AsNoTracking().AsQueryable();
+        return SpecificationEvaluator<T>.GetQuery<T, TResult>(query, spec);
     }
 }
-

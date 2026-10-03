@@ -1,0 +1,194 @@
+# Database
+
+Natures Chakki uses **SQL Server** with two EF Core DbContexts sharing one database (`NaturesChakki`).
+
+## Contexts
+
+| Context | File | Migrations folder |
+|---------|------|-------------------|
+| Commerce | `Infrastructure/Data/StoreContext.cs` | `Infrastructure/Migrations/Store/` |
+| Identity | `Infrastructure/Data/AppIdentityDbContext.cs` | `Infrastructure/Migrations/Identity/` |
+
+Connection string key: `ConnectionStrings:DefaultConnection`
+
+EF Core migrations are the production schema source of truth. The archived SQL Server export under `Infrastructure/Data/Legacy` must not be used for Azure SQL deployment. Apply Store migrations first and Identity migrations second using `scripts/deploy-database.ps1`, or generate reviewable idempotent scripts with `scripts/generate-database-scripts.ps1`.
+
+## Commerce Schema (`StoreContext`)
+
+### Entities
+
+| Entity | Table | Description |
+|--------|-------|-------------|
+| `Product` | Products | Catalog items; `Price` is authoritative INR per kg, with generated SKU/unit/status |
+| `ProductCategory` | ProductCategories | Category taxonomy |
+| `ProductBrand` | ProductBrands | Brand taxonomy |
+| `ProductImage` | ProductImages | Additional product images |
+| `Inventory` | Inventories | On-hand and reserved stock per product |
+| `InventoryTransaction` | InventoryTransactions | Immutable stock movement history |
+| `Order` | Orders | Customer orders with owned `ShipToAddress` |
+| `OrderItem` | OrderItems | Line items |
+| `OrderStatusHistory` | OrderStatusHistories | Administrative status transition history |
+| `Payment` | Payments | Stripe payment records |
+| `Coupon` | Coupons | Discount codes |
+| `CouponUsage` | CouponUsages | Per-user coupon redemption tracking |
+| `ProductReview` | ProductReviews | Customer reviews (moderation status) |
+| `Wishlist` | Wishlists | One wishlist per user |
+| `WishlistItem` | WishlistItems | Wishlist line items |
+| `DeliveryMethod` | DeliveryMethods | Shipping options |
+| `Address` | Addresses | Saved user addresses |
+| `Notification` | Notifications | In-app notifications |
+| `AuditLog` | AuditLogs | Admin audit trail |
+
+### Relationships
+
+- `Product` → `ProductCategory`, `ProductBrand` (FK: `CategoryId`, `BrandId`)
+- `Product` → `ProductImage` (1:N)
+- `Product` → `Inventory` (1:1)
+- `Product` → `ProductReview` (1:N)
+- `Order` → `OrderItem` (1:N)
+- `Order` → `DeliveryMethod` (N:1)
+- `Order` → `Coupon` (optional N:1)
+- `Order.ShipToAddress` — owned entity (`OwnsOne` in `StoreContext`)
+- `Wishlist` → `WishlistItem` (1:N), one wishlist per `UserId`
+
+Identity tables (`AspNetUsers`, `AspNetRoles`, etc.) live in `AppIdentityDbContext` with `AppUser` (`IdentityUser<int>`) and `RefreshToken`.
+`EmailVerificationOtps` stores one hashed, expiring OTP record per unverified user.
+`PasswordResetTokens` stores SHA-256 token hashes with UTC expiry, used and revoked timestamps; raw reset credentials are never stored.
+
+## Indexes
+
+Configured in `Infrastructure/Config/EntityConfigurations.cs`:
+
+| Table | Index | Type |
+|-------|-------|------|
+| ProductCategories | Name | Unique |
+| ProductBrands | Name | Unique |
+| Coupons | Code | Unique |
+| Payments | PaymentIntentId | Unique |
+| Inventories | ProductId | Unique |
+| InventoryTransactions | ProductId, CreatedAt | History lookup |
+| OrderStatusHistories | OrderId, CreatedAt | Timeline lookup |
+| Products | SKU | Unique when populated |
+| Products | IsArchived, IsActive | Admin/customer catalog filtering |
+| Wishlists | UserId | Unique |
+| RefreshTokens | Token | Unique |
+| EmailVerificationOtps | UserId | Unique |
+| PasswordResetTokens | TokenHash | Unique |
+| PasswordResetTokens | UserId | Lookup/revocation |
+
+## Decimal Precision
+
+Money columns use `decimal(18,2)` for `Order`, `OrderItem`, `Payment`, `Coupon`, `DeliveryMethod`.
+
+## Time storage
+
+Business/security timestamps are stored and compared in UTC. No schema conversion to local time is performed. API serialization emits explicit UTC values, while Angular displays them in IST. This preserves expiration, ordering and migration behavior independently of database/App Service host timezone.
+
+## Cart Storage
+
+Shopping carts are **not** persisted in SQL. They use `ICartService`:
+
+- `InMemoryCartStorage` when `CacheProvider=Memory`
+- `RedisCartStorage` when `CacheProvider=Redis`
+
+Cart entities (`ShoppingCart`, `CartItem`) are serialized JSON documents keyed by cart ID. `CartWorkflow` binds authenticated carts to the JWT user id, reloads product data/prices, validates kg quantities, merges duplicate products and serializes concurrent writes per cart.
+
+## ER Diagram
+
+```mermaid
+erDiagram
+    ProductCategory ||--o{ Product : categorizes
+    ProductBrand ||--o{ Product : brands
+    Product ||--o{ ProductImage : has
+    Product ||--|| Inventory : tracks
+    Product ||--o{ ProductReview : receives
+    Product ||--o{ OrderItem : "ordered as"
+
+    DeliveryMethod ||--o{ Order : ships
+    Coupon ||--o{ Order : applies
+    Order ||--|{ OrderItem : contains
+    Order ||--o| Payment : paid_by
+
+    Wishlist ||--|{ WishlistItem : contains
+    Product ||--o{ WishlistItem : saved_in
+
+    Coupon ||--o{ CouponUsage : tracked
+
+    AppUser ||--o{ RefreshToken : has
+    AppUser ||--o{ EmailVerificationOtp : verifies
+    AppUser ||--o{ PasswordResetToken : resets
+    AppUser ||--o| Wishlist : owns
+    AppUser ||--o{ Address : saves
+    AppUser ||--o{ Notification : receives
+
+    Product {
+        int Id PK
+        string Name
+        decimal Price
+        int QuantityInStock
+        int CategoryId FK
+        int BrandId FK
+    }
+
+    Order {
+        int Id PK
+        int UserId
+        int DeliveryMethodId FK
+        int CouponId FK
+        decimal Total
+        string PaymentIntentId
+        int Status
+    }
+
+    Inventory {
+        int Id PK
+        int ProductId FK
+        int QuantityOnHand
+        int ReservedQuantity
+    }
+
+    Coupon {
+        int Id PK
+        string Code UK
+        int Type
+        decimal Value
+    }
+```
+
+## Seeding
+
+- **Commerce**: optional idempotent products/brands/categories/inventory and 7-day delivery seed controlled by `Database:SeedStoreDataOnStartup`
+- **Identity**: roles may be created on startup; optional Development users or a one-time Production Admin require `SeedUsers:Enabled=true` and external credentials
+
+## Migration Commands Reference
+
+```bash
+# List migrations
+dotnet ef migrations list --project Infrastructure --startup-project API --context StoreContext
+
+# Generate reviewable idempotent Azure SQL scripts
+./scripts/generate-database-scripts.ps1
+```
+
+Production order is Store migrations first, Identity migrations second. `scripts/deploy-database.ps1` applies that order. If schema/data is copied manually, verify all expected rows exist in `__EFMigrationsHistory` before future EF deployment.
+
+## Database Portability Assessment
+
+No provider migration has been performed.
+
+### SQL Server → PostgreSQL: High
+
+The application primarily uses portable EF Core LINQ, relationships, repositories, owned entities, and EF transactions. No raw SQL, stored procedures, rowversion, or SQL Server-only query features were found.
+
+Later work:
+
+- Replace `UseSqlServer`/SQL Server package with Npgsql configuration.
+- Regenerate both migration histories for PostgreSQL; current migrations, explicit `decimal(18,2)` store types, and the SQL Server filtered SKU index syntax are provider-oriented.
+- Validate identifier casing, string comparison/collation behavior, date/time mappings, transaction isolation, Identity schema, and concurrency under PostgreSQL.
+- Run the full integration suite against a real PostgreSQL instance rather than EF InMemory.
+
+### SQL Server → Cosmos DB: Low
+
+Cosmos DB is not a relational drop-in replacement. Main blockers are ASP.NET Identity's relational stores, two relational DbContexts sharing one database, joins/`Include`, foreign keys, unique constraints, owned address mapping, multi-entity checkout transactions, and the normalized order/product/inventory model.
+
+Later work would require aggregate/document redesign, explicit partition keys, denormalization, optimistic concurrency, idempotent inventory/order workflows instead of cross-partition relational transactions, Cosmos-specific repositories/migrations, and likely retaining Identity in a separate relational database.
