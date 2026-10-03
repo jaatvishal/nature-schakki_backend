@@ -1,5 +1,5 @@
+using API;
 using API.Middleware;
-using Asp.Versioning;
 using Infrastructure;
 using Infrastructure.Data;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -7,7 +7,6 @@ using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
-using Microsoft.OpenApi.Models;
 using Serilog;
 using System.Security.Cryptography;
 using System.Text;
@@ -56,16 +55,7 @@ try
 
     builder.Services.AddAuthorization();
 
-    builder.Services.AddApiVersioning(options =>
-    {
-        options.DefaultApiVersion = new ApiVersion(1, 0);
-        options.AssumeDefaultVersionWhenUnspecified = true;
-        options.ReportApiVersions = true;
-    }).AddApiExplorer(options =>
-    {
-        options.GroupNameFormat = "'v'VVV";
-        options.SubstituteApiVersionInUrl = true;
-    });
+    builder.Services.AddVersionedApiExplorer();
 
     builder.Services.AddControllers()
         .AddJsonOptions(options =>
@@ -74,28 +64,7 @@ try
             options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
         });
     builder.Services.AddEndpointsApiExplorer();
-    builder.Services.AddSwaggerGen(options =>
-    {
-        options.SwaggerDoc("v1", new OpenApiInfo { Title = "NaturesChakki API", Version = "v1" });
-        options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
-        {
-            Description = "JWT Authorization header using the Bearer scheme.",
-            Name = "Authorization",
-            In = ParameterLocation.Header,
-            Type = SecuritySchemeType.ApiKey,
-            Scheme = "Bearer"
-        });
-        options.AddSecurityRequirement(new OpenApiSecurityRequirement
-        {
-            {
-                new OpenApiSecurityScheme
-                {
-                    Reference = new OpenApiReference { Type = ReferenceType.SecurityScheme, Id = "Bearer" }
-                },
-                Array.Empty<string>()
-            }
-        });
-    });
+    builder.Services.AddSwaggerGen(SwaggerConfiguration.Configure);
 
     var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
     builder.Services.AddCors(options =>
@@ -155,7 +124,8 @@ try
     app.UseSerilogRequestLogging();
     app.UseMiddleware<ExceptionMiddleware>();
 
-    if (app.Environment.IsDevelopment())
+    if (app.Environment.IsDevelopment() ||
+        builder.Configuration.GetValue<bool>("Swagger:Enabled"))
     {
         app.UseSwagger();
         app.UseSwaggerUI();

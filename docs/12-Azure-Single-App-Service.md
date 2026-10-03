@@ -137,6 +137,7 @@ Database__ApplyMigrationsOnStartup=false
 Database__SeedStoreDataOnStartup=false
 Database__SeedIdentityRolesOnStartup=true
 SeedUsers__Enabled=false
+Swagger__Enabled=false
 ```
 
 No production secret belongs in Git or `appsettings*.json`.
@@ -228,7 +229,7 @@ Test registration/OTP, login, cart, COD checkout, Admin product upload, orders, 
 
 ## Visual Studio publish
 
-This application does not use Azure API Management. `UpdateApiOnPublish` is disabled in `API.csproj`, so Visual Studio should deploy the App Service package without running the obsolete `dotnet swagger tofile` synchronization step.
+Azure API Management is supported, but its API definition is deployed separately from the App Service ZIP. Visual Studio's legacy post-publish hook invokes `dotnet swagger --serializeasv2`, which is incompatible with the .NET 10 CLI. `UpdateApiOnPublish` is therefore disabled so it cannot turn a successful App Service publish into a failed publish result.
 
 If an existing local publish profile still prints **Starting to update your API**, open:
 
@@ -242,7 +243,34 @@ and set:
 <UpdateApiOnPublish>false</UpdateApiOnPublish>
 ```
 
-Alternatively remove the API Management service dependency from the Visual Studio Publish page. This does not disable Development Swagger UI; it only disables the optional post-deployment API Management update.
+Generate a current OpenAPI document:
+
+```powershell
+./scripts/generate-openapi.ps1 -OpenApiVersion 2.0
+```
+
+Import `artifacts/openapi/swagger.json` through **API Management → APIs → Add API → OpenAPI**, or use:
+
+```powershell
+az apim api import `
+  --resource-group <resource-group> `
+  --service-name <api-management-service> `
+  --api-id natures-chakki `
+  --path api `
+  --specification-format OpenApiJson `
+  --specification-path ./artifacts/openapi/swagger.json `
+  --service-url https://<app-name>.azurewebsites.net
+```
+
+The repository pins Swashbuckle CLI 10.2.3 and uses `SwaggerHostFactory`, so OpenAPI generation does not start the application, connect to Azure SQL, run migrations, or require production secrets.
+
+Alternatively set `Swagger__Enabled=true` temporarily in App Service and import:
+
+```text
+https://<app-name>.azurewebsites.net/swagger/v1/swagger.json
+```
+
+Set it back to `false` after import if public production Swagger is not required.
 
 `HTTP Error 500.30` is a separate startup failure. For this project it normally means required Production App Service settings are missing. Confirm every setting in **Required App Service settings**, restart the app, and inspect **App Service → Log stream**. The application intentionally refuses to start with an empty Azure SQL connection, JWT key, production URL, SMTP credentials, Redis connection (when Redis is selected), or Blob Storage connection (when AzureBlob is selected).
 

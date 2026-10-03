@@ -339,7 +339,7 @@ public class AdminController(
 
     [HttpPost("products/images")]
     [RequestSizeLimit(5_242_880)]
-    public async Task<ActionResult<object>> UploadProductImage([FromForm] IFormFile file)
+    public async Task<ActionResult<object>> UploadProductImage(IFormFile file)
     {
         if (file.Length == 0 || file.Length > 5_242_880) return BadRequest("Image must be between 1 byte and 5 MB.");
         await using var stream = file.OpenReadStream();

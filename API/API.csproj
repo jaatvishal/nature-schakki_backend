@@ -14,28 +14,24 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Asp.Versioning.Mvc" Version="8.1.0" />
-    <PackageReference Include="Asp.Versioning.Mvc.ApiExplorer" Version="8.1.0" />
+    <PackageReference Include="Asp.Versioning.Mvc" Version="10.2.1" />
+    <PackageReference Include="Asp.Versioning.Mvc.ApiExplorer" Version="10.2.1" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.12" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.12">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
     <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore" Version="10.0.12" />
-    <PackageReference Include="Serilog.AspNetCore" Version="9.0.0" />
-    <PackageReference Include="Swashbuckle.AspNetCore" Version="7.2.0" />
+    <PackageReference Include="Serilog.AspNetCore" Version="10.0.0" />
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="10.2.3" />
   </ItemGroup>
 
-  <Target Name="PublishAngular" BeforeTargets="ComputeFilesToPublish"
-          Condition="'$(Configuration)' == 'Release' and '$(BuildAngular)' != 'false'">
+  <Target Name="PublishAngular" BeforeTargets="ComputeFilesToPublish" Condition="'$(Configuration)' == 'Release' and '$(BuildAngular)' != 'false'">
     <Exec WorkingDirectory="$(SpaRoot)" Command="npm ci" />
     <Exec WorkingDirectory="$(SpaRoot)" Command="npm run build -- --configuration production" />
     <ItemGroup>
       <AngularDist Include="$(SpaRoot)dist\client\browser\**\*" />
-      <ResolvedFileToPublish Include="@(AngularDist)"
-                             RelativePath="wwwroot\%(RecursiveDir)%(Filename)%(Extension)"
-                             CopyToPublishDirectory="PreserveNewest"
-                             ExcludeFromSingleFile="true" />
+      <ResolvedFileToPublish Include="@(AngularDist)" RelativePath="wwwroot\%(RecursiveDir)%(Filename)%(Extension)" CopyToPublishDirectory="PreserveNewest" ExcludeFromSingleFile="true" />
     </ItemGroup>
   </Target>
 
