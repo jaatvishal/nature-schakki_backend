@@ -16,6 +16,7 @@ import { authInterceptor } from './core/interceptors/auth-interceptor';
 import { errorInterceptor } from './core/interceptors/error-interceptor';
 import { loadingInterceptor } from './core/interceptors/loading-interceptor';
 import { AuthService } from './core/services/auth.service';
+import { INDIA_DATE_PIPE_TIMEZONE } from './core/config/application-time';
 
 export const appConfig: ApplicationConfig = {
   providers: [
@@ -26,7 +27,7 @@ export const appConfig: ApplicationConfig = {
     provideHttpClient(withInterceptors([authInterceptor, errorInterceptor, loadingInterceptor])),
     {
       provide: DATE_PIPE_DEFAULT_OPTIONS,
-      useValue: { timezone: '+0530' },
+      useValue: { timezone: INDIA_DATE_PIPE_TIMEZONE },
     },
     {
       provide: MAT_DIALOG_DEFAULT_OPTIONS,

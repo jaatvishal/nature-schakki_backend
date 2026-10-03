@@ -1,5 +1,6 @@
 using API;
 using API.Middleware;
+using API.Serialization;
 using Infrastructure;
 using Infrastructure.Data;
 using Infrastructure.Options;
@@ -64,6 +65,7 @@ try
         .AddJsonOptions(options =>
         {
             options.JsonSerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
+            options.JsonSerializerOptions.Converters.Add(new UtcDateTimeJsonConverter());
             options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
         });
     builder.Services.AddEndpointsApiExplorer();
