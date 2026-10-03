@@ -41,7 +41,8 @@ Tests/
 ├── Unit/
 │   ├── CouponServiceTests.cs      (4 tests)
 │   ├── InventoryServiceTests.cs   (3 tests)
-│   └── OrderServiceTests.cs       (3 tests)
+│   ├── OrderServiceTests.cs       (3 tests)
+│   └── IndiaTimeZoneTests.cs      (2 tests)
 ├── Integration/
 │   └── IntegrationTests.cs        (24 tests)
 └── GlobalUsings.cs
@@ -51,13 +52,13 @@ Tests/
 
 | Suite | Count | Coverage |
 |-------|------:|----------|
-| Backend unit | 10 | inventory, coupon rules, order creation/cancellation/transitions |
+| Backend unit | 12 | inventory, coupons, orders, UTC/IST conversion and UTC JSON normalization |
 | Backend integration | 24 | catalog, OTP, login, secure reset, cart price/ownership/kg validation, COD checkout, Admin CRUD/upload/inventory/audit/payment/status and health |
-| Angular | 16 | auth/Admin guards, JWT interceptor, reactive session state, distinct cart count, finalized checkout, Shop search reset |
+| Angular | 17 | auth/Admin/cart/checkout/search behavior and centralized IST formatting |
 
-Total: **34 backend tests + 16 Angular tests**.
+Total: **36 backend tests + 17 Angular tests**.
 
-The Azure production child branch adds a single-App-Service SPA fallback/API 404 integration test, bringing its backend total to 35.
+The Azure production child branch adds a single-App-Service SPA fallback/API 404 integration test, bringing its backend total to 37.
 
 ## Covered areas
 

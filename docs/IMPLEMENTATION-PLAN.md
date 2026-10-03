@@ -123,9 +123,9 @@ Current customer flow:
 
 | Item | Status | Notes |
 |------|--------|-------|
-| Unit tests | ✅ Complete | 10 tests |
+| Unit tests | ✅ Complete | 12 tests |
 | Integration tests | ✅ Complete | 24 tests |
-| Angular tests | ✅ Complete | 16 tests |
+| Angular tests | ✅ Complete | 17 tests |
 | Test factory (in-memory DB) | ✅ Complete | `CustomWebApplicationFactory` |
 
 ---

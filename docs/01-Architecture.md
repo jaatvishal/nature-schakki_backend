@@ -45,6 +45,7 @@ Both contexts use the same `ConnectionStrings:DefaultConnection` but maintain se
 - **Domain services** — `OrderService`, `InventoryService`, `CouponService`, `PasswordResetService`, `StripePaymentService`
 - **Admin projections** — paged DTO-based operational APIs for users, products, orders, inventory, payments, reports, audit, and alerts
 - **Storage strategy** — `IFileStorageService` isolates local product uploads from a future Azure Blob implementation
+- **Time boundary** — UTC persistence/security, explicit UTC API JSON, named `Asia/Kolkata` report conversion and global Angular IST display
 
 ## Architecture Diagram
 

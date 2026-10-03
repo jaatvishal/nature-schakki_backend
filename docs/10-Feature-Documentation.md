@@ -4,7 +4,7 @@ End-to-end feature reference for the Natures Chakki e-commerce platform.
 
 ## Date and time
 
-Backend timestamps remain UTC for database consistency. Angular globally renders `DatePipe` values in India Standard Time (`UTC+05:30`) for customer orders, Admin orders/payments/audit, registrations and timelines.
+Database/security timestamps and logs remain UTC. API JSON emits explicit UTC values even when EF returns `DateTimeKind.Unspecified`. Angular globally renders `DatePipe` values in IST (`UTC+05:30`), while Admin report/date-filter boundaries use the named `Asia/Kolkata` `TimeZoneInfo` service.
 
 ## Catalog
 

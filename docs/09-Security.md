@@ -74,6 +74,8 @@ User seeding is explicit through `SeedUsers:Enabled` and external credentials; n
 
 Email OTP values are generated with a cryptographic RNG, stored only as salted hashes, replaced on resend, and never logged. SMTP credentials must be supplied through environment configuration or Key Vault.
 
+JWT, refresh-token, OTP and password-reset expiration remains UTC. IST conversion occurs only at API normalization/report and Angular display boundaries, so security lifetimes are unchanged.
+
 ## Error Handling
 
 `API/Middleware/ExceptionMiddleware.cs` maps exceptions to consistent JSON responses without leaking stack traces in production:

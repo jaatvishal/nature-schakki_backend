@@ -137,7 +137,7 @@ dotnet test Tests/Tests.csproj
 cd client && npm test -- --watch=false
 ```
 
-Current branch baseline: 34 backend tests and 16 Angular tests.
+Current branch baseline: 36 backend tests and 17 Angular tests.
 
 ## Production handoff
 

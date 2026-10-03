@@ -140,7 +140,7 @@ dotnet test Tests/Tests.csproj
 cd client && npm test -- --watch=false
 ```
 
-34 backend tests and 16 Angular tests pass on this branch. See [docs/07-Testing.md](docs/07-Testing.md).
+36 backend tests and 17 Angular tests pass on this branch. See [docs/07-Testing.md](docs/07-Testing.md).
 
 ## Documentation
 

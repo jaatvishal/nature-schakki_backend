@@ -78,6 +78,10 @@ Configured in `Infrastructure/Config/EntityConfigurations.cs`:
 
 Money columns use `decimal(18,2)` for `Order`, `OrderItem`, `Payment`, `Coupon`, `DeliveryMethod`.
 
+## Time storage
+
+Business/security timestamps remain UTC in SQL and all expiration comparisons remain UTC. API serialization normalizes EF `DateTimeKind.Unspecified` values to explicit UTC (`Z`); Angular converts them to IST only for display.
+
 ## Cart Storage
 
 Shopping carts are **not** persisted in SQL. They use `ICartService`:
