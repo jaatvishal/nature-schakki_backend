@@ -10,6 +10,7 @@ import 'zone.js';
 
 import { routes } from './app.routes';
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
+import { DATE_PIPE_DEFAULT_OPTIONS } from '@angular/common';
 import { MAT_DIALOG_DEFAULT_OPTIONS } from '@angular/material/dialog';
 import { authInterceptor } from './core/interceptors/auth-interceptor';
 import { errorInterceptor } from './core/interceptors/error-interceptor';
@@ -23,6 +24,10 @@ export const appConfig: ApplicationConfig = {
     provideZoneChangeDetection(),
     provideAppInitializer(() => inject(AuthService).initialize()),
     provideHttpClient(withInterceptors([authInterceptor, errorInterceptor, loadingInterceptor])),
+    {
+      provide: DATE_PIPE_DEFAULT_OPTIONS,
+      useValue: { timezone: '+0530' },
+    },
     {
       provide: MAT_DIALOG_DEFAULT_OPTIONS,
       useValue: { autoFocus: 'dialog', restoreFocus: true },
